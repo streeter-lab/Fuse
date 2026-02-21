@@ -42,8 +42,12 @@ async function signOut() {
  * Returns the current session or null.
  */
 async function getSession() {
-  const { data: { session } } = await supabase.auth.getSession();
-  return session;
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    return session;
+  } catch {
+    return null;
+  }
 }
 
 /**
