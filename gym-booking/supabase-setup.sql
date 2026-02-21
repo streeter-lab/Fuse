@@ -11,7 +11,7 @@
 -- ----------------------------------------------------------
 
 -- Profiles table: extends Supabase auth.users
-create table public.profiles (
+create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   full_name text not null,
   phone text,
@@ -22,7 +22,7 @@ create table public.profiles (
 );
 
 -- Classes table: gym classes and sessions
-create table public.classes (
+create table if not exists public.classes (
   id uuid primary key default gen_random_uuid(),
   title text not null,
   instructor text not null,
@@ -36,7 +36,7 @@ create table public.classes (
 );
 
 -- Bookings table: member bookings for classes
-create table public.bookings (
+create table if not exists public.bookings (
   id uuid primary key default gen_random_uuid(),
   class_id uuid not null references public.classes(id) on delete cascade,
   member_id uuid not null references public.profiles(id) on delete cascade,
@@ -48,8 +48,8 @@ create table public.bookings (
 -- 2. INDEXES
 -- ----------------------------------------------------------
 
-create index idx_bookings_class_id on public.bookings(class_id);
-create index idx_bookings_member_id on public.bookings(member_id);
+create index if not exists idx_bookings_class_id on public.bookings(class_id);
+create index if not exists idx_bookings_member_id on public.bookings(member_id);
 
 -- 3. ENABLE ROW LEVEL SECURITY
 -- ----------------------------------------------------------
@@ -77,11 +77,13 @@ $$;
 -- ----------------------------------------------------------
 
 -- Profiles: users can read their own row
+drop policy if exists "Users can view own profile" on public.profiles;
 create policy "Users can view own profile"
   on public.profiles for select
   using (auth.uid() = id);
 
 -- Profiles: users can update their own row (but not privileged columns)
+drop policy if exists "Users can update own profile" on public.profiles;
 create policy "Users can update own profile"
   on public.profiles for update
   using (auth.uid() = id)
@@ -91,51 +93,61 @@ create policy "Users can update own profile"
   );
 
 -- Profiles: allow inserts from the trigger (service role) and the user themselves
+drop policy if exists "Users can insert own profile" on public.profiles;
 create policy "Users can insert own profile"
   on public.profiles for insert
   with check (auth.uid() = id);
 
 -- Profiles: admins can read all profiles (needed for admin panel)
+drop policy if exists "Admins can view all profiles" on public.profiles;
 create policy "Admins can view all profiles"
   on public.profiles for select
   using ( public.is_admin() );
 
 -- Classes: anyone authenticated or anonymous can read
+drop policy if exists "Anyone can view classes" on public.classes;
 create policy "Anyone can view classes"
   on public.classes for select
   using (true);
 
 -- Classes: only admins can insert
+drop policy if exists "Admins can insert classes" on public.classes;
 create policy "Admins can insert classes"
   on public.classes for insert
   with check ( public.is_admin() );
 
 -- Classes: only admins can update
+drop policy if exists "Admins can update classes" on public.classes;
 create policy "Admins can update classes"
   on public.classes for update
   using ( public.is_admin() );
 
 -- Bookings: users can view their own bookings
+drop policy if exists "Users can view own bookings" on public.bookings;
 create policy "Users can view own bookings"
   on public.bookings for select
   using (auth.uid() = member_id);
 
 -- Bookings: admins can view all bookings
+drop policy if exists "Admins can view all bookings" on public.bookings;
 create policy "Admins can view all bookings"
   on public.bookings for select
   using ( public.is_admin() );
 
 -- Bookings: users can insert their own bookings
+drop policy if exists "Users can insert own bookings" on public.bookings;
 create policy "Users can insert own bookings"
   on public.bookings for insert
   with check (auth.uid() = member_id);
 
 -- Bookings: users can update their own bookings (for cancellation)
+drop policy if exists "Users can update own bookings" on public.bookings;
 create policy "Users can update own bookings"
   on public.bookings for update
   using (auth.uid() = member_id);
 
 -- Bookings: admins can update any booking
+drop policy if exists "Admins can update any booking" on public.bookings;
 create policy "Admins can update any booking"
   on public.bookings for update
   using ( public.is_admin() );
@@ -159,6 +171,7 @@ begin
 end;
 $$;
 
+drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
@@ -166,7 +179,7 @@ create trigger on_auth_user_created
 -- 7. UNIQUE CONSTRAINT: prevent duplicate active bookings
 -- ----------------------------------------------------------
 
-create unique index idx_bookings_unique_active
+create unique index if not exists idx_bookings_unique_active
   on public.bookings (class_id, member_id)
   where status in ('confirmed', 'waitlist');
 
@@ -318,7 +331,7 @@ $$;
 -- that repeats every week on the same day/time. Actual bookable class
 -- instances are generated from these templates.
 
-create table public.class_templates (
+create table if not exists public.class_templates (
   id uuid primary key default gen_random_uuid(),
   title text not null,
   instructor text not null default 'TBC',
@@ -333,10 +346,18 @@ create table public.class_templates (
 );
 
 -- Add template_id to classes so each generated instance links back to its template
-alter table public.classes
-  add column template_id uuid references public.class_templates(id) on delete set null;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'classes' AND column_name = 'template_id'
+  ) THEN
+    ALTER TABLE public.classes
+      ADD COLUMN template_id uuid REFERENCES public.class_templates(id) ON DELETE SET NULL;
+  END IF;
+END $$;
 
-create index idx_classes_template_id on public.classes(template_id);
+create index if not exists idx_classes_template_id on public.classes(template_id);
 
 -- Allow instructor to default to 'TBC' for template-generated classes
 alter table public.classes alter column instructor set default 'TBC';
@@ -345,18 +366,22 @@ alter table public.classes alter column instructor set default 'TBC';
 alter table public.class_templates enable row level security;
 
 -- RLS Policies for class_templates
+drop policy if exists "Anyone can view class templates" on public.class_templates;
 create policy "Anyone can view class templates"
   on public.class_templates for select
   using (true);
 
+drop policy if exists "Admins can insert class templates" on public.class_templates;
 create policy "Admins can insert class templates"
   on public.class_templates for insert
   with check ( public.is_admin() );
 
+drop policy if exists "Admins can update class templates" on public.class_templates;
 create policy "Admins can update class templates"
   on public.class_templates for update
   using ( public.is_admin() );
 
+drop policy if exists "Admins can delete class templates" on public.class_templates;
 create policy "Admins can delete class templates"
   on public.class_templates for delete
   using ( public.is_admin() );
