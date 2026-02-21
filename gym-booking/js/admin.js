@@ -67,6 +67,84 @@ async function fetchClassBookings(classId) {
   return data;
 }
 
+// ── CLASS TEMPLATE CRUD ─────────────────────────────────
+
+/**
+ * Fetch all class templates ordered by day of week then start time.
+ */
+async function fetchAllTemplates() {
+  const { data, error } = await supabase
+    .from('class_templates')
+    .select('*')
+    .order('day_of_week', { ascending: true })
+    .order('start_time', { ascending: true });
+
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * Create a new class template.
+ */
+async function createTemplate(templateData) {
+  const { data, error } = await supabase
+    .from('class_templates')
+    .insert(templateData)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * Update an existing class template by ID.
+ */
+async function updateTemplate(templateId, updates) {
+  const { data, error } = await supabase
+    .from('class_templates')
+    .update(updates)
+    .eq('id', templateId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * Delete a class template by ID.
+ */
+async function deleteTemplate(templateId) {
+  const { error } = await supabase
+    .from('class_templates')
+    .delete()
+    .eq('id', templateId);
+
+  if (error) throw error;
+}
+
+/**
+ * Toggle the is_active flag on a template.
+ */
+async function toggleTemplateActive(templateId, isActive) {
+  return updateTemplate(templateId, { is_active: isActive });
+}
+
+/**
+ * Generate bookable class instances for a given week start date (YYYY-MM-DD).
+ * Returns the number of classes created.
+ */
+async function generateWeekClasses(weekStartDate) {
+  const { data, error } = await supabase
+    .rpc('generate_classes_for_week', { p_week_start: weekStartDate });
+
+  if (error) throw error;
+  return data;
+}
+
+// ── ADMIN STATS ─────────────────────────────────────────
+
 /**
  * Fetch admin dashboard stats:
  * - Total bookings today
