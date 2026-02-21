@@ -18,25 +18,22 @@ async function fetchWeekClasses(weekStart) {
 
   if (error) throw error;
 
-  // Fetch booking counts for all classes in this week in one query
+  // Fetch booking counts using server-side function (bypasses RLS for accurate counts)
   const classIds = classes.map(c => c.id);
   let bookingCounts = {};
 
   if (classIds.length > 0) {
-    const { data: bookings, error: bErr } = await supabase
-      .from('bookings')
-      .select('class_id, status')
-      .in('class_id', classIds)
-      .in('status', ['confirmed', 'waitlist']);
+    const { data: counts, error: bErr } = await supabase
+      .rpc('get_booking_counts', { p_class_ids: classIds });
 
     if (bErr) throw bErr;
 
-    // Count confirmed bookings per class
-    bookings.forEach(b => {
-      if (b.status === 'confirmed') {
-        bookingCounts[b.class_id] = (bookingCounts[b.class_id] || 0) + 1;
-      }
-    });
+    // Build lookup by class_id
+    if (counts) {
+      counts.forEach(c => {
+        bookingCounts[c.class_id] = c.confirmed_count || 0;
+      });
+    }
   }
 
   // Attach spots info to each class
@@ -115,9 +112,9 @@ function renderScheduleGrid(container, classes, weekStart) {
 
       html += `
         <a href="${href}" class="class-card${cancelledClass}" style="display:block;text-decoration:none;color:inherit;">
-          <div class="class-title">${c.title}</div>
-          <div class="class-meta">${formatTimeRange(c.start_time, c.end_time)} &middot; ${c.location}</div>
-          <div class="class-meta">${c.instructor}</div>
+          <div class="class-title">${escapeHtml(c.title)}</div>
+          <div class="class-meta">${formatTimeRange(c.start_time, c.end_time)} &middot; ${escapeHtml(c.location)}</div>
+          <div class="class-meta">${escapeHtml(c.instructor)}</div>
           <span class="spots ${spotsClass}">${spotsText}</span>
         </a>
       `;
@@ -147,7 +144,7 @@ async function initSchedule() {
       const classes = await fetchWeekClasses(currentWeek);
       renderScheduleGrid(grid, classes, currentWeek);
     } catch (err) {
-      grid.innerHTML = `<p class="empty-state">Failed to load schedule. ${err.message}</p>`;
+      grid.innerHTML = `<p class="empty-state">Failed to load schedule. ${escapeHtml(err.message)}</p>`;
     }
   }
 

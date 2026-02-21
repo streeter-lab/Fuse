@@ -1,6 +1,19 @@
 // utils.js - Shared helpers used across pages.
 
 /**
+ * Escape HTML special characters to prevent XSS when inserting into innerHTML.
+ */
+function escapeHtml(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/**
  * Format a Date object or ISO string as "Mon 23 Feb".
  */
 function formatDateShort(date) {

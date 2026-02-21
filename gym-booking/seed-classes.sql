@@ -12,6 +12,10 @@ DECLARE
   week_start date;
   i integer;
 BEGIN
+  -- Set timezone to UK local time so plain timestamps are interpreted correctly
+  -- during both GMT (UTC+0) and BST (UTC+1) periods.
+  PERFORM set_config('timezone', 'Europe/London', true);
+
   -- Start from the Monday of this week (or next Monday if today is after Monday)
   week_start := date_trunc('week', CURRENT_DATE)::date;
 
