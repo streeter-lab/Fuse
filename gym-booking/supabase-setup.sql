@@ -58,7 +58,22 @@ alter table public.profiles enable row level security;
 alter table public.classes enable row level security;
 alter table public.bookings enable row level security;
 
--- 4. RLS POLICIES
+-- 4. HELPER FUNCTION (bypasses RLS to avoid recursion)
+-- ----------------------------------------------------------
+
+create or replace function public.is_admin()
+returns boolean
+language sql
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1 from public.profiles
+    where id = auth.uid() and is_admin = true
+  );
+$$;
+
+-- 5. RLS POLICIES
 -- ----------------------------------------------------------
 
 -- Profiles: users can read their own row
@@ -79,12 +94,7 @@ create policy "Users can insert own profile"
 -- Profiles: admins can read all profiles (needed for admin panel)
 create policy "Admins can view all profiles"
   on public.profiles for select
-  using (
-    exists (
-      select 1 from public.profiles p
-      where p.id = auth.uid() and p.is_admin = true
-    )
-  );
+  using ( public.is_admin() );
 
 -- Classes: anyone authenticated or anonymous can read
 create policy "Anyone can view classes"
@@ -94,22 +104,12 @@ create policy "Anyone can view classes"
 -- Classes: only admins can insert
 create policy "Admins can insert classes"
   on public.classes for insert
-  with check (
-    exists (
-      select 1 from public.profiles
-      where id = auth.uid() and is_admin = true
-    )
-  );
+  with check ( public.is_admin() );
 
 -- Classes: only admins can update
 create policy "Admins can update classes"
   on public.classes for update
-  using (
-    exists (
-      select 1 from public.profiles
-      where id = auth.uid() and is_admin = true
-    )
-  );
+  using ( public.is_admin() );
 
 -- Bookings: users can view their own bookings
 create policy "Users can view own bookings"
@@ -119,12 +119,7 @@ create policy "Users can view own bookings"
 -- Bookings: admins can view all bookings
 create policy "Admins can view all bookings"
   on public.bookings for select
-  using (
-    exists (
-      select 1 from public.profiles
-      where id = auth.uid() and is_admin = true
-    )
-  );
+  using ( public.is_admin() );
 
 -- Bookings: users can insert their own bookings
 create policy "Users can insert own bookings"
@@ -139,14 +134,9 @@ create policy "Users can update own bookings"
 -- Bookings: admins can update any booking
 create policy "Admins can update any booking"
   on public.bookings for update
-  using (
-    exists (
-      select 1 from public.profiles
-      where id = auth.uid() and is_admin = true
-    )
-  );
+  using ( public.is_admin() );
 
--- 5. TRIGGER: auto-create profile on user signup
+-- 6. TRIGGER: auto-create profile on user signup
 -- ----------------------------------------------------------
 
 create or replace function public.handle_new_user()
