@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Book Class - FitBook</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a href="index.html" class="logo">Fit<span>Book</span></a>
+      <nav class="site-nav">
+        <a href="schedule.html">Schedule</a>
+        <a href="dashboard.html">Dashboard</a>
+        <a href="#" class="logout-btn">Logout</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container page-content">
+    <!-- Loading state shown while data is fetched -->
+    <div id="class-loading" class="spinner"></div>
+
+    <!-- Class detail rendered by JS -->
+    <div id="class-detail" style="display:none;">
+      <a href="schedule.html" style="font-size:0.85rem;">&larr; Back to schedule</a>
+
+      <div class="class-detail-header" style="margin-top:1rem;">
+        <h1 id="class-title"></h1>
+        <div class="detail-meta">
+          <span><strong>When:</strong> <span id="class-when"></span></span>
+          <span><strong>Where:</strong> <span id="class-location"></span></span>
+          <span><strong>Instructor:</strong> <span id="class-instructor"></span></span>
+        </div>
+      </div>
+
+      <div class="card">
+        <p id="class-description"></p>
+      </div>
+
+      <div class="card" style="margin-top:1rem;">
+        <h3>Availability</h3>
+        <p style="margin-top:0.5rem;">
+          <span id="class-spots" class="spots"></span>
+          <span id="class-waitlist-info" style="margin-left:0.75rem;font-size:0.85rem;color:var(--color-text-muted);"></span>
+        </p>
+
+        <!-- Booking status and actions -->
+        <div id="booking-status" style="margin-top:1rem;"></div>
+
+        <div class="booking-actions" id="booking-actions"></div>
+      </div>
+    </div>
+
+    <!-- Error state -->
+    <div id="class-error" class="empty-state" style="display:none;">
+      <p>Class not found or an error occurred.</p>
+      <a href="schedule.html" class="btn btn-primary">Back to Schedule</a>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="js/supabase.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/bookings.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      bindLogout();
+
+      const session = await requireAuth();
+      if (!session) return;
+
+      const params = getQueryParams();
+      if (!params.id) {
+        document.getElementById('class-loading').style.display = 'none';
+        document.getElementById('class-error').style.display = '';
+        return;
+      }
+
+      try {
+        await renderBookingPage(params.id, session.user.id);
+      } catch (err) {
+        document.getElementById('class-loading').style.display = 'none';
+        document.getElementById('class-error').style.display = '';
+      }
+    });
+
+    /**
+     * Render the full booking page: class info, availability, and action buttons.
+     */
+    async function renderBookingPage(classId, memberId) {
+      const cls = await fetchClassDetail(classId);
+      const myBooking = await fetchMyBooking(classId, memberId);
+
+      // Hide loading, show detail
+      document.getElementById('class-loading').style.display = 'none';
+      document.getElementById('class-detail').style.display = '';
+
+      // Populate class info
+      document.getElementById('class-title').textContent = cls.title;
+      document.getElementById('class-when').textContent =
+        `${formatDateShort(cls.start_time)}, ${formatTimeRange(cls.start_time, cls.end_time)}`;
+      document.getElementById('class-location').textContent = cls.location;
+      document.getElementById('class-instructor').textContent = cls.instructor;
+      document.getElementById('class-description').textContent =
+        cls.description || 'No description provided.';
+
+      // Availability badge
+      const spotsEl = document.getElementById('class-spots');
+      const waitlistInfo = document.getElementById('class-waitlist-info');
+
+      if (cls.is_cancelled) {
+        spotsEl.className = 'spots full';
+        spotsEl.textContent = 'Cancelled';
+        waitlistInfo.textContent = '';
+      } else if (cls.spotsLeft > 3) {
+        spotsEl.className = 'spots available';
+        spotsEl.textContent = `${cls.spotsLeft} spots left`;
+      } else if (cls.spotsLeft > 0) {
+        spotsEl.className = 'spots low';
+        spotsEl.textContent = `${cls.spotsLeft} spots left`;
+      } else {
+        spotsEl.className = 'spots full';
+        spotsEl.textContent = 'Full';
+        if (cls.waitlistCount > 0) {
+          waitlistInfo.textContent = `${cls.waitlistCount} on waitlist`;
+        }
+      }
+
+      // Booking status and action buttons
+      const statusEl = document.getElementById('booking-status');
+      const actionsEl = document.getElementById('booking-actions');
+      actionsEl.innerHTML = '';
+      statusEl.innerHTML = '';
+
+      if (cls.is_cancelled) {
+        statusEl.innerHTML = '<p style="color:var(--color-danger);font-weight:600;">This class has been cancelled.</p>';
+        return;
+      }
+
+      if (myBooking) {
+        // User already has a booking
+        const badgeClass = myBooking.status === 'confirmed' ? 'badge-confirmed' : 'badge-waitlist';
+        statusEl.innerHTML = `<p>Your booking: <span class="badge ${badgeClass}">${myBooking.status}</span></p>`;
+
+        if (myBooking.status === 'waitlist') {
+          const pos = await getWaitlistPosition(classId, memberId);
+          if (pos > 0) {
+            statusEl.innerHTML += `<p style="font-size:0.85rem;color:var(--color-text-muted);margin-top:0.25rem;">Waitlist position: #${pos}</p>`;
+          }
+        }
+
+        const cancelBtn = document.createElement('button');
+        cancelBtn.className = 'btn btn-danger';
+        cancelBtn.textContent = 'Cancel Booking';
+        cancelBtn.addEventListener('click', async () => {
+          if (!confirmAction('Are you sure you want to cancel this booking?')) return;
+          setLoading(cancelBtn, true);
+          try {
+            await cancelBooking(myBooking.id, classId);
+            showToast('Booking cancelled.', 'success');
+            // Reload the page to reflect changes
+            await renderBookingPage(classId, memberId);
+          } catch (err) {
+            showToast(err.message, 'error');
+            setLoading(cancelBtn, false);
+          }
+        });
+        actionsEl.appendChild(cancelBtn);
+      } else {
+        // User has no booking - show book button
+        const bookBtn = document.createElement('button');
+        bookBtn.className = 'btn btn-primary';
+        bookBtn.textContent = cls.spotsLeft > 0 ? 'Book This Class' : 'Join Waitlist';
+        bookBtn.addEventListener('click', async () => {
+          setLoading(bookBtn, true);
+          try {
+            const booking = await bookClass(classId, memberId);
+            const msg = booking.status === 'confirmed'
+              ? 'Booking confirmed!'
+              : 'Added to waitlist.';
+            showToast(msg, 'success');
+            await renderBookingPage(classId, memberId);
+          } catch (err) {
+            showToast(err.message, 'error');
+            setLoading(bookBtn, false);
+          }
+        });
+        actionsEl.appendChild(bookBtn);
+      }
+    }
+  </script>
+</body>
+</html>

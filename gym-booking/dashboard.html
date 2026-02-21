@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - FitBook</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a href="index.html" class="logo">Fit<span>Book</span></a>
+      <nav class="site-nav">
+        <a href="schedule.html">Schedule</a>
+        <a href="dashboard.html">Dashboard</a>
+        <a href="admin.html" id="nav-admin" style="display:none;">Admin</a>
+        <a href="#" class="logout-btn">Logout</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container page-content">
+    <div id="dashboard-loading" class="spinner"></div>
+
+    <div id="dashboard-content" style="display:none;">
+      <h1>Welcome, <span id="member-name"></span></h1>
+      <p style="color:var(--color-text-muted);margin-bottom:1.5rem;">
+        Membership: <span id="member-type" class="badge badge-confirmed"></span>
+      </p>
+
+      <!-- Quick actions -->
+      <div style="margin-bottom:1.5rem;">
+        <a href="schedule.html" class="btn btn-primary">Browse Classes</a>
+      </div>
+
+      <!-- Upcoming bookings -->
+      <h2 style="margin-bottom:1rem;">Your Upcoming Bookings</h2>
+      <div id="bookings-list"></div>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="js/supabase.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/bookings.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      bindLogout();
+
+      const session = await requireAuth();
+      if (!session) return;
+
+      try {
+        const profile = await getProfile();
+
+        // Show admin link if applicable
+        if (profile.is_admin) {
+          document.getElementById('nav-admin').style.display = '';
+        }
+
+        // Populate member info
+        document.getElementById('member-name').textContent =
+          profile.full_name || session.user.email;
+        document.getElementById('member-type').textContent =
+          profile.membership_type || 'standard';
+
+        // Fetch and render upcoming bookings
+        const bookings = await fetchMyUpcomingBookings(session.user.id);
+        renderBookingsList(bookings);
+
+        document.getElementById('dashboard-loading').style.display = 'none';
+        document.getElementById('dashboard-content').style.display = '';
+      } catch (err) {
+        document.getElementById('dashboard-loading').style.display = 'none';
+        showToast('Failed to load dashboard: ' + err.message, 'error');
+      }
+    });
+
+    /**
+     * Render the list of upcoming bookings as cards.
+     */
+    function renderBookingsList(bookings) {
+      const container = document.getElementById('bookings-list');
+
+      if (!bookings.length) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <p>No upcoming bookings.</p>
+            <a href="schedule.html" class="btn btn-outline">Find a Class</a>
+          </div>`;
+        return;
+      }
+
+      container.innerHTML = bookings.map(b => {
+        const cls = b.classes;
+        const badgeClass = b.status === 'confirmed' ? 'badge-confirmed' : 'badge-waitlist';
+        const cancelled = cls.is_cancelled ? ' (Class cancelled)' : '';
+
+        return `
+          <div class="card booking-card">
+            <div class="booking-info">
+              <div class="booking-title">${cls.title}${cancelled}</div>
+              <div class="booking-meta">
+                ${formatDateShort(cls.start_time)}, ${formatTimeRange(cls.start_time, cls.end_time)}
+                &middot; ${cls.location} &middot; ${cls.instructor}
+              </div>
+            </div>
+            <span class="badge ${badgeClass}">${b.status}</span>
+            <a href="book.html?id=${cls.id}" class="btn btn-sm btn-outline">View</a>
+          </div>`;
+      }).join('');
+    }
+  </script>
+</body>
+</html>

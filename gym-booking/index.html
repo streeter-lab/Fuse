@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FitBook - Gym Class Booking</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a href="index.html" class="logo">Fit<span>Book</span></a>
+      <nav class="site-nav">
+        <a href="schedule.html">Schedule</a>
+        <a href="dashboard.html" id="nav-dashboard" style="display:none;">Dashboard</a>
+        <a href="login.html" id="nav-login">Login</a>
+        <a href="register.html" id="nav-register">Register</a>
+        <a href="#" class="logout-btn" id="nav-logout" style="display:none;">Logout</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Hero section -->
+  <section class="hero">
+    <div class="container">
+      <h1>Book Your Next Workout</h1>
+      <p>Browse classes, reserve your spot, and never miss a session. Simple booking for your gym, your schedule.</p>
+      <div>
+        <a href="schedule.html" class="btn btn-primary">View Schedule</a>
+        <a href="register.html" class="btn btn-outline" id="hero-register" style="border-color:#fff;color:#fff;">Get Started</a>
+        <a href="dashboard.html" class="btn btn-outline" id="hero-dashboard" style="border-color:#fff;color:#fff;display:none;">My Dashboard</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features section -->
+  <section class="container">
+    <div class="features">
+      <div class="card feature-card">
+        <div class="icon">&#128197;</div>
+        <h3>Weekly Schedule</h3>
+        <p>See every class at a glance. Filter by day, check availability, and plan your week.</p>
+      </div>
+      <div class="card feature-card">
+        <div class="icon">&#9889;</div>
+        <h3>Instant Booking</h3>
+        <p>Reserve your spot in seconds. If a class is full, join the waitlist and get auto-promoted.</p>
+      </div>
+      <div class="card feature-card">
+        <div class="icon">&#128274;</div>
+        <h3>Your Dashboard</h3>
+        <p>Track upcoming bookings, manage cancellations, and stay on top of your fitness routine.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer style="text-align:center;padding:2rem 1rem;color:var(--color-text-muted);font-size:0.85rem;">
+    FitBook &copy; 2026. Built for your gym.
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="js/supabase.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      const session = await getSession();
+      if (session) {
+        // Logged-in nav state
+        document.getElementById('nav-login').style.display = 'none';
+        document.getElementById('nav-register').style.display = 'none';
+        document.getElementById('nav-dashboard').style.display = '';
+        document.getElementById('nav-logout').style.display = '';
+        document.getElementById('hero-register').style.display = 'none';
+        document.getElementById('hero-dashboard').style.display = '';
+      }
+      bindLogout();
+    });
+  </script>
+</body>
+</html>
