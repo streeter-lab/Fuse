@@ -110,6 +110,20 @@ function confirmAction(message) {
 }
 
 /**
+ * Convert a UTC ISO string to a local "YYYY-MM-DDTHH:MM" string
+ * suitable for a datetime-local input.
+ */
+function toLocalDatetimeInput(isoString) {
+  const d = new Date(isoString);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const h = String(d.getHours()).padStart(2, '0');
+  const min = String(d.getMinutes()).padStart(2, '0');
+  return `${y}-${m}-${day}T${h}:${min}`;
+}
+
+/**
  * Parse URL query parameters. Returns an object.
  */
 function getQueryParams() {

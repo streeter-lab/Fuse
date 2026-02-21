@@ -66,6 +66,8 @@
   <script src="js/auth.js"></script>
   <script src="js/bookings.js"></script>
   <script>
+    let isBookingInProgress = false;
+
     document.addEventListener('DOMContentLoaded', async () => {
       bindLogout();
 
@@ -156,7 +158,9 @@
         cancelBtn.className = 'btn btn-danger';
         cancelBtn.textContent = 'Cancel Booking';
         cancelBtn.addEventListener('click', async () => {
+          if (isBookingInProgress) return;
           if (!confirmAction('Are you sure you want to cancel this booking?')) return;
+          isBookingInProgress = true;
           setLoading(cancelBtn, true);
           try {
             await cancelBooking(myBooking.id, classId);
@@ -166,6 +170,8 @@
           } catch (err) {
             showToast(err.message, 'error');
             setLoading(cancelBtn, false);
+          } finally {
+            isBookingInProgress = false;
           }
         });
         actionsEl.appendChild(cancelBtn);
@@ -175,6 +181,8 @@
         bookBtn.className = 'btn btn-primary';
         bookBtn.textContent = cls.spotsLeft > 0 ? 'Book This Class' : 'Join Waitlist';
         bookBtn.addEventListener('click', async () => {
+          if (isBookingInProgress) return;
+          isBookingInProgress = true;
           setLoading(bookBtn, true);
           try {
             const booking = await bookClass(classId, memberId);
@@ -186,6 +194,8 @@
           } catch (err) {
             showToast(err.message, 'error');
             setLoading(bookBtn, false);
+          } finally {
+            isBookingInProgress = false;
           }
         });
         actionsEl.appendChild(bookBtn);
