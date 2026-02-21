@@ -75,11 +75,10 @@ async function fetchClassBookings(classId) {
 async function fetchAdminStats() {
   const now = new Date();
 
-  // Today boundaries
-  const todayStart = new Date(now);
-  todayStart.setHours(0, 0, 0, 0);
-  const todayEnd = new Date(now);
-  todayEnd.setHours(23, 59, 59, 999);
+  // Today boundaries (use UTC to match server-side timestamptz storage)
+  const todayUTC = now.toISOString().slice(0, 10);
+  const todayStart = new Date(todayUTC + 'T00:00:00.000Z');
+  const todayEnd = new Date(todayUTC + 'T23:59:59.999Z');
 
   // This week boundaries
   const weekStart = getWeekStart(now);

@@ -160,9 +160,9 @@
 
         tbody.innerHTML = classes.map(c => `
           <tr>
-            <td><strong>${c.title}</strong><br><small>${c.instructor}</small></td>
+            <td><strong>${escapeHtml(c.title)}</strong><br><small>${escapeHtml(c.instructor)}</small></td>
             <td>${formatDateTime(c.start_time)}</td>
-            <td>${c.location}</td>
+            <td>${escapeHtml(c.location)}</td>
             <td>${c.is_cancelled
               ? '<span class="badge badge-cancelled">Cancelled</span>'
               : '<span class="badge badge-confirmed">Active</span>'}</td>
@@ -172,7 +172,8 @@
                 onclick="toggleCancel('${c.id}', ${!c.is_cancelled})">
                 ${c.is_cancelled ? 'Restore' : 'Cancel'}
               </button>
-              <button class="btn btn-sm btn-secondary" onclick="viewBookings('${c.id}', '${c.title.replace(/'/g, "\\'")}')">Bookings</button>
+              <button class="btn btn-sm btn-secondary" data-title="${escapeHtml(c.title)}"
+                onclick="viewBookings('${c.id}', this.dataset.title)">Bookings</button>
             </td>
           </tr>
         `).join('');
@@ -309,9 +310,9 @@
           const p = b.profiles;
           const badgeClass = b.status === 'confirmed' ? 'badge-confirmed' : 'badge-waitlist';
           return `<li>
-            <strong>${p ? p.full_name : 'Unknown'}</strong>
-            ${p && p.phone ? ` &middot; ${p.phone}` : ''}
-            &middot; <span class="badge ${badgeClass}">${b.status}</span>
+            <strong>${p ? escapeHtml(p.full_name) : 'Unknown'}</strong>
+            ${p && p.phone ? ` &middot; ${escapeHtml(p.phone)}` : ''}
+            &middot; <span class="badge ${badgeClass}">${escapeHtml(b.status)}</span>
             <small style="color:var(--color-text-muted);margin-left:0.5rem;">
               Booked ${formatDateTime(b.booked_at)}
             </small>

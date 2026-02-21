@@ -158,3 +158,151 @@ $$;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
+
+-- 7. UNIQUE CONSTRAINT: prevent duplicate active bookings
+-- ----------------------------------------------------------
+
+create unique index idx_bookings_unique_active
+  on public.bookings (class_id, member_id)
+  where status in ('confirmed', 'waitlist');
+
+-- 8. SERVER-SIDE FUNCTIONS (bypass RLS for accurate counts & atomic operations)
+-- ----------------------------------------------------------
+
+-- Get booking counts for a set of classes (bypasses RLS so all bookings are counted)
+create or replace function public.get_booking_counts(p_class_ids uuid[])
+returns table(class_id uuid, confirmed_count bigint, waitlist_count bigint)
+language sql
+security definer
+set search_path = ''
+as $$
+  select
+    b.class_id,
+    count(*) filter (where b.status = 'confirmed') as confirmed_count,
+    count(*) filter (where b.status = 'waitlist') as waitlist_count
+  from public.bookings b
+  where b.class_id = any(p_class_ids)
+    and b.status in ('confirmed', 'waitlist')
+  group by b.class_id;
+$$;
+
+-- Book a class atomically (prevents TOCTOU race condition and enforces capacity)
+create or replace function public.book_class(p_class_id uuid, p_member_id uuid)
+returns json
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_class public.classes;
+  v_confirmed_count integer;
+  v_status text;
+  v_booking public.bookings;
+begin
+  -- Verify the caller is booking for themselves
+  if p_member_id != auth.uid() then
+    raise exception 'You can only book classes for yourself.';
+  end if;
+
+  -- Lock the class row to prevent concurrent bookings from racing
+  select * into v_class from public.classes where id = p_class_id for update;
+
+  if v_class is null then
+    raise exception 'Class not found.';
+  end if;
+
+  if v_class.is_cancelled then
+    raise exception 'This class has been cancelled.';
+  end if;
+
+  -- Check for existing active booking
+  if exists (
+    select 1 from public.bookings
+    where class_id = p_class_id and member_id = p_member_id
+      and status in ('confirmed', 'waitlist')
+  ) then
+    raise exception 'You already have an active booking for this class.';
+  end if;
+
+  -- Count confirmed bookings while holding the lock
+  select count(*) into v_confirmed_count
+  from public.bookings
+  where class_id = p_class_id and status = 'confirmed';
+
+  -- Determine status based on remaining capacity
+  v_status := case when v_confirmed_count < v_class.capacity then 'confirmed' else 'waitlist' end;
+
+  -- Insert the booking
+  insert into public.bookings (class_id, member_id, status)
+  values (p_class_id, p_member_id, v_status)
+  returning * into v_booking;
+
+  return row_to_json(v_booking);
+end;
+$$;
+
+-- Cancel a booking and promote from waitlist atomically
+create or replace function public.cancel_and_promote(p_booking_id uuid, p_member_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_booking public.bookings;
+  v_next_id uuid;
+begin
+  -- Verify the caller is cancelling their own booking
+  if p_member_id != auth.uid() then
+    raise exception 'You can only cancel your own bookings.';
+  end if;
+
+  -- Fetch and verify the booking belongs to the user
+  select * into v_booking from public.bookings
+  where id = p_booking_id and member_id = p_member_id;
+
+  if v_booking is null then
+    raise exception 'Booking not found.';
+  end if;
+
+  if v_booking.status = 'cancelled' then
+    raise exception 'Booking is already cancelled.';
+  end if;
+
+  -- Cancel the booking
+  update public.bookings set status = 'cancelled' where id = p_booking_id;
+
+  -- If the cancelled booking was confirmed, promote the earliest waitlisted booking
+  if v_booking.status = 'confirmed' then
+    select id into v_next_id
+    from public.bookings
+    where class_id = v_booking.class_id and status = 'waitlist'
+    order by booked_at asc
+    limit 1
+    for update;
+
+    if v_next_id is not null then
+      update public.bookings set status = 'confirmed' where id = v_next_id;
+    end if;
+  end if;
+end;
+$$;
+
+-- Get waitlist position for a member in a class (bypasses RLS for accurate position)
+create or replace function public.get_waitlist_position(p_class_id uuid, p_member_id uuid)
+returns integer
+language sql
+security definer
+set search_path = ''
+as $$
+  select coalesce(
+    (select pos::integer
+     from (
+       select member_id, row_number() over (order by booked_at asc) as pos
+       from public.bookings
+       where class_id = p_class_id and status = 'waitlist'
+     ) ranked
+     where member_id = p_member_id),
+    0
+  );
+$$;

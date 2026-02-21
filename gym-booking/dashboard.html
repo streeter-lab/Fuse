@@ -100,13 +100,13 @@
         return `
           <div class="card booking-card">
             <div class="booking-info">
-              <div class="booking-title">${cls.title}${cancelled}</div>
+              <div class="booking-title">${escapeHtml(cls.title)}${cancelled}</div>
               <div class="booking-meta">
                 ${formatDateShort(cls.start_time)}, ${formatTimeRange(cls.start_time, cls.end_time)}
-                &middot; ${cls.location} &middot; ${cls.instructor}
+                &middot; ${escapeHtml(cls.location)} &middot; ${escapeHtml(cls.instructor)}
               </div>
             </div>
-            <span class="badge ${badgeClass}">${b.status}</span>
+            <span class="badge ${badgeClass}">${escapeHtml(b.status)}</span>
             <a href="book.html?id=${cls.id}" class="btn btn-sm btn-outline">View</a>
           </div>`;
       }).join('');

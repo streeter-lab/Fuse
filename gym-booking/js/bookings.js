@@ -1,7 +1,10 @@
 // bookings.js - Booking, cancellation, and waitlist logic.
+// Uses server-side RPC functions to bypass RLS for accurate counts
+// and to perform atomic operations (preventing race conditions).
 
 /**
  * Fetch a single class by ID, including its current booking count.
+ * Uses server-side function to bypass RLS for accurate counts.
  */
 async function fetchClassDetail(classId) {
   const { data: cls, error } = await supabase
@@ -12,29 +15,21 @@ async function fetchClassDetail(classId) {
 
   if (error) throw error;
 
-  // Count confirmed bookings
-  const { count: confirmedCount, error: cErr } = await supabase
-    .from('bookings')
-    .select('*', { count: 'exact', head: true })
-    .eq('class_id', classId)
-    .eq('status', 'confirmed');
+  // Use RPC for accurate counts (bypasses RLS)
+  const { data: counts, error: cErr } = await supabase
+    .rpc('get_booking_counts', { p_class_ids: [classId] });
 
   if (cErr) throw cErr;
 
-  // Count waitlist bookings
-  const { count: waitlistCount, error: wErr } = await supabase
-    .from('bookings')
-    .select('*', { count: 'exact', head: true })
-    .eq('class_id', classId)
-    .eq('status', 'waitlist');
-
-  if (wErr) throw wErr;
+  const classCount = counts && counts.length > 0
+    ? counts[0]
+    : { confirmed_count: 0, waitlist_count: 0 };
 
   return {
     ...cls,
-    confirmedCount: confirmedCount || 0,
-    waitlistCount: waitlistCount || 0,
-    spotsLeft: cls.capacity - (confirmedCount || 0)
+    confirmedCount: classCount.confirmed_count || 0,
+    waitlistCount: classCount.waitlist_count || 0,
+    spotsLeft: cls.capacity - (classCount.confirmed_count || 0)
   };
 }
 
@@ -56,98 +51,50 @@ async function fetchMyBooking(classId, memberId) {
 }
 
 /**
- * Book a class for the current user.
- * If the class is full, the booking is created with 'waitlist' status.
+ * Book a class for the current user using a server-side function.
+ * Handles capacity checks, duplicate prevention, and waitlist assignment
+ * atomically to prevent race conditions and overbooking.
  */
 async function bookClass(classId, memberId) {
-  // Re-fetch to get latest availability
-  const cls = await fetchClassDetail(classId);
-
-  if (cls.is_cancelled) {
-    throw new Error('This class has been cancelled.');
-  }
-
-  const status = cls.spotsLeft > 0 ? 'confirmed' : 'waitlist';
-
   const { data, error } = await supabase
-    .from('bookings')
-    .insert({
-      class_id: classId,
-      member_id: memberId,
-      status
-    })
-    .select()
-    .single();
+    .rpc('book_class', { p_class_id: classId, p_member_id: memberId });
 
   if (error) throw error;
   return data;
 }
 
 /**
- * Cancel a booking. If the cancelled booking was 'confirmed', promote
- * the earliest waitlisted booking for the same class.
+ * Cancel a booking using a server-side function.
+ * Automatically promotes the next waitlisted member if applicable.
+ * Both cancellation and promotion happen atomically.
  */
 async function cancelBooking(bookingId, classId) {
-  // Get the booking to check its status before cancelling
-  const { data: booking, error: fetchErr } = await supabase
-    .from('bookings')
-    .select('status')
-    .eq('id', bookingId)
-    .single();
+  const session = await getSession();
+  if (!session) throw new Error('You must be logged in to cancel a booking.');
 
-  if (fetchErr) throw fetchErr;
-
-  // Mark booking as cancelled
   const { error } = await supabase
-    .from('bookings')
-    .update({ status: 'cancelled' })
-    .eq('id', bookingId);
+    .rpc('cancel_and_promote', {
+      p_booking_id: bookingId,
+      p_member_id: session.user.id
+    });
 
   if (error) throw error;
-
-  // If the cancelled booking was confirmed, promote from waitlist
-  if (booking.status === 'confirmed') {
-    await promoteFromWaitlist(classId);
-  }
-}
-
-/**
- * Promote the earliest waitlisted booking for a class to 'confirmed'.
- */
-async function promoteFromWaitlist(classId) {
-  const { data: next, error: wErr } = await supabase
-    .from('bookings')
-    .select('id')
-    .eq('class_id', classId)
-    .eq('status', 'waitlist')
-    .order('booked_at', { ascending: true })
-    .limit(1)
-    .maybeSingle();
-
-  if (wErr || !next) return;
-
-  await supabase
-    .from('bookings')
-    .update({ status: 'confirmed' })
-    .eq('id', next.id);
 }
 
 /**
  * Fetch the current user's waitlist position for a class.
+ * Uses server-side function to count across all users' bookings.
  * Returns 0 if not on waitlist, or a 1-based position.
  */
 async function getWaitlistPosition(classId, memberId) {
   const { data, error } = await supabase
-    .from('bookings')
-    .select('id, member_id')
-    .eq('class_id', classId)
-    .eq('status', 'waitlist')
-    .order('booked_at', { ascending: true });
+    .rpc('get_waitlist_position', {
+      p_class_id: classId,
+      p_member_id: memberId
+    });
 
   if (error) throw error;
-
-  const idx = data.findIndex(b => b.member_id === memberId);
-  return idx === -1 ? 0 : idx + 1;
+  return data || 0;
 }
 
 /**
