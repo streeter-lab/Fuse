@@ -358,20 +358,14 @@
 
     async function editClass(classId) {
       try {
-        const { data: cls, error } = await supabase
-          .from('classes')
-          .select('*')
-          .eq('id', classId)
-          .single();
-
-        if (error) throw error;
+        const cls = await fetchClassById(classId);
 
         document.getElementById('edit-class-id').value = cls.id;
         document.getElementById('cls-title').value = cls.title;
         document.getElementById('cls-instructor').value = cls.instructor;
         document.getElementById('cls-description').value = cls.description || '';
-        document.getElementById('cls-start').value = cls.start_time.slice(0, 16);
-        document.getElementById('cls-end').value = cls.end_time.slice(0, 16);
+        document.getElementById('cls-start').value = toLocalDatetimeInput(cls.start_time);
+        document.getElementById('cls-end').value = toLocalDatetimeInput(cls.end_time);
         document.getElementById('cls-capacity').value = cls.capacity;
         document.getElementById('cls-location').value = cls.location;
 
@@ -400,7 +394,8 @@
 
       try {
         await toggleCancelClass(classId, cancel);
-        showToast(`Class ${action}led.`, 'success');
+        const pastTense = cancel ? 'cancelled' : 'restored';
+        showToast(`Class ${pastTense}.`, 'success');
         await loadClasses();
         await loadStats();
       } catch (err) {
@@ -530,13 +525,7 @@
 
     async function editTemplate(templateId) {
       try {
-        const { data: tpl, error } = await supabase
-          .from('class_templates')
-          .select('*')
-          .eq('id', templateId)
-          .single();
-
-        if (error) throw error;
+        const tpl = await fetchTemplateById(templateId);
 
         document.getElementById('edit-template-id').value = tpl.id;
         document.getElementById('tpl-title').value = tpl.title;

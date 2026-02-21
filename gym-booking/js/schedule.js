@@ -141,10 +141,20 @@ async function initSchedule() {
     grid.innerHTML = '<div class="spinner"></div>';
 
     try {
-      const classes = await fetchWeekClasses(currentWeek);
+      const fetchPromise = fetchWeekClasses(currentWeek);
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Request timed out')), 10000)
+      );
+
+      const classes = await Promise.race([fetchPromise, timeoutPromise]);
       renderScheduleGrid(grid, classes, currentWeek);
     } catch (err) {
-      grid.innerHTML = `<p class="empty-state">Failed to load schedule. ${escapeHtml(err.message)}</p>`;
+      grid.innerHTML = `
+        <div class="empty-state">
+          <p>Unable to load the schedule. Please check your connection and try again.</p>
+          <button class="btn btn-primary" id="retry-schedule">Retry</button>
+        </div>`;
+      document.getElementById('retry-schedule').addEventListener('click', () => loadWeek(currentWeek));
     }
   }
 

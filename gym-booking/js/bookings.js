@@ -99,24 +99,29 @@ async function getWaitlistPosition(classId, memberId) {
 
 /**
  * Fetch all upcoming bookings for a member (confirmed + waitlist).
- * Joins with class data for display.
+ * Uses a server-side RPC function that performs a proper JOIN with a WHERE clause
+ * so only upcoming bookings are returned, rather than fetching all historical
+ * bookings and filtering client-side.
  */
 async function fetchMyUpcomingBookings(memberId) {
-  const now = new Date().toISOString();
-
   const { data, error } = await supabase
-    .from('bookings')
-    .select(`
-      id, status, booked_at,
-      classes (id, title, instructor, start_time, end_time, location, is_cancelled)
-    `)
-    .eq('member_id', memberId)
-    .in('status', ['confirmed', 'waitlist'])
-    .gte('classes.start_time', now)
-    .order('booked_at', { ascending: true });
+    .rpc('get_upcoming_bookings', { p_member_id: memberId });
 
   if (error) throw error;
 
-  // Filter out bookings where the join returned no class (past classes filtered by gte)
-  return data.filter(b => b.classes);
+  // Reshape flat RPC rows into the nested structure expected by renderBookingsList()
+  return (data || []).map(row => ({
+    id: row.id,
+    status: row.status,
+    booked_at: row.booked_at,
+    classes: {
+      id: row.class_id,
+      title: row.class_title,
+      instructor: row.class_instructor,
+      start_time: row.class_start_time,
+      end_time: row.class_end_time,
+      location: row.class_location,
+      is_cancelled: row.class_is_cancelled
+    }
+  }));
 }

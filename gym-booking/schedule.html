@@ -42,7 +42,16 @@
     // Toggle login/logout nav links based on session
     document.addEventListener('DOMContentLoaded', async () => {
       // Load schedule immediately — don't block on auth
-      initSchedule();
+      try {
+        await initSchedule();
+      } catch (err) {
+        const grid = document.getElementById('schedule-grid');
+        grid.innerHTML = `
+          <div class="empty-state">
+            <p>Unable to load the schedule. Please check your connection and try again.</p>
+            <button class="btn btn-primary" onclick="location.reload()">Retry</button>
+          </div>`;
+      }
 
       try {
         const session = await getSession();

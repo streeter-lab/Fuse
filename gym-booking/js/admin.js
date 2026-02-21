@@ -14,6 +14,20 @@ async function fetchAllClasses() {
 }
 
 /**
+ * Fetch a single class by ID.
+ */
+async function fetchClassById(classId) {
+  const { data, error } = await supabase
+    .from('classes')
+    .select('*')
+    .eq('id', classId)
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+/**
  * Create a new class.
  */
 async function createClass(classData) {
@@ -78,6 +92,20 @@ async function fetchAllTemplates() {
     .select('*')
     .order('day_of_week', { ascending: true })
     .order('start_time', { ascending: true });
+
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * Fetch a single class template by ID.
+ */
+async function fetchTemplateById(templateId) {
+  const { data, error } = await supabase
+    .from('class_templates')
+    .select('*')
+    .eq('id', templateId)
+    .single();
 
   if (error) throw error;
   return data;
