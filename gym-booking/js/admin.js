@@ -75,10 +75,9 @@ async function fetchClassBookings(classId) {
 async function fetchAdminStats() {
   const now = new Date();
 
-  // Today boundaries (use UTC to match server-side timestamptz storage)
-  const todayUTC = now.toISOString().slice(0, 10);
-  const todayStart = new Date(todayUTC + 'T00:00:00.000Z');
-  const todayEnd = new Date(todayUTC + 'T23:59:59.999Z');
+  // Today boundaries in the admin's local timezone
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const tomorrowStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
 
   // This week boundaries
   const weekStart = getWeekStart(now);
@@ -90,7 +89,7 @@ async function fetchAdminStats() {
     .from('bookings')
     .select('*', { count: 'exact', head: true })
     .gte('booked_at', todayStart.toISOString())
-    .lte('booked_at', todayEnd.toISOString())
+    .lt('booked_at', tomorrowStart.toISOString())
     .in('status', ['confirmed', 'waitlist']);
 
   if (e1) throw e1;
