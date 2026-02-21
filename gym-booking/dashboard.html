@@ -92,7 +92,7 @@
         return;
       }
 
-      container.innerHTML = bookings.map(b => {
+      container.innerHTML = bookings.filter(b => b.classes).map(b => {
         const cls = b.classes;
         const badgeClass = b.status === 'confirmed' ? 'badge-confirmed' : 'badge-waitlist';
         const cancelled = cls.is_cancelled ? ' (Class cancelled)' : '';

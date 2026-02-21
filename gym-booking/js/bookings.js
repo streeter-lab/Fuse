@@ -171,5 +171,5 @@ async function fetchMyUpcomingBookings(memberId) {
   if (error) throw error;
 
   // Filter out bookings where the join returned no class (past classes filtered by gte)
-  return data.filter(b => b.classes && b.classes.start_time >= now);
+  return data.filter(b => b.classes);
 }
