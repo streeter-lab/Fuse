@@ -191,12 +191,21 @@
         const submitBtn = document.getElementById('form-submit');
         setLoading(submitBtn, true);
 
+        const startTime = new Date(document.getElementById('cls-start').value);
+        const endTime = new Date(document.getElementById('cls-end').value);
+
+        if (endTime <= startTime) {
+          showToast('End time must be after start time.', 'error');
+          setLoading(submitBtn, false);
+          return;
+        }
+
         const classData = {
           title: document.getElementById('cls-title').value.trim(),
           instructor: document.getElementById('cls-instructor').value.trim(),
           description: document.getElementById('cls-description').value.trim(),
-          start_time: new Date(document.getElementById('cls-start').value).toISOString(),
-          end_time: new Date(document.getElementById('cls-end').value).toISOString(),
+          start_time: startTime.toISOString(),
+          end_time: endTime.toISOString(),
           capacity: parseInt(document.getElementById('cls-capacity').value, 10),
           location: document.getElementById('cls-location').value.trim()
         };
