@@ -311,3 +311,127 @@ as $$
     0
   );
 $$;
+
+-- 9. CLASS TEMPLATES TABLE
+-- ----------------------------------------------------------
+-- Stores the recurring weekly class schedule. Each row defines a class
+-- that repeats every week on the same day/time. Actual bookable class
+-- instances are generated from these templates.
+
+create table public.class_templates (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  instructor text not null default 'TBC',
+  description text,
+  day_of_week integer not null check (day_of_week between 1 and 7), -- ISO: 1=Mon, 7=Sun
+  start_time time not null,
+  end_time time not null,
+  capacity integer not null default 20 check (capacity > 0),
+  location text not null default 'Studio',
+  is_active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+-- Add template_id to classes so each generated instance links back to its template
+alter table public.classes
+  add column template_id uuid references public.class_templates(id) on delete set null;
+
+create index idx_classes_template_id on public.classes(template_id);
+
+-- Allow instructor to default to 'TBC' for template-generated classes
+alter table public.classes alter column instructor set default 'TBC';
+
+-- Enable RLS on class_templates
+alter table public.class_templates enable row level security;
+
+-- RLS Policies for class_templates
+create policy "Anyone can view class templates"
+  on public.class_templates for select
+  using (true);
+
+create policy "Admins can insert class templates"
+  on public.class_templates for insert
+  with check ( public.is_admin() );
+
+create policy "Admins can update class templates"
+  on public.class_templates for update
+  using ( public.is_admin() );
+
+create policy "Admins can delete class templates"
+  on public.class_templates for delete
+  using ( public.is_admin() );
+
+-- 10. CLASS GENERATION FUNCTION
+-- ----------------------------------------------------------
+-- Generate bookable class instances from active templates for a given week.
+-- p_week_start must be a Monday date. Returns the number of classes created.
+-- Duplicate-safe: skips any template+date combination that already exists.
+--
+-- Can be called:
+--   1. From the admin panel via Supabase RPC
+--   2. From pg_cron for automated weekly generation (see comment below)
+
+create or replace function public.generate_classes_for_week(p_week_start date)
+returns integer
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_template record;
+  v_class_date date;
+  v_count integer := 0;
+begin
+  -- Block non-admin authenticated users; allow pg_cron (no auth context)
+  if auth.uid() is not null and not public.is_admin() then
+    raise exception 'Only admins can generate classes.';
+  end if;
+
+  -- Use UK timezone so class times are correct across GMT/BST
+  perform set_config('timezone', 'Europe/London', true);
+
+  for v_template in
+    select * from public.class_templates where is_active = true
+  loop
+    -- day_of_week: 1=Mon(+0), 2=Tue(+1), ..., 7=Sun(+6)
+    v_class_date := p_week_start + (v_template.day_of_week - 1);
+
+    -- Skip if a class from this template already exists on this date
+    if not exists (
+      select 1 from public.classes
+      where template_id = v_template.id
+        and (start_time at time zone 'Europe/London')::date = v_class_date
+    ) then
+      insert into public.classes (
+        title, instructor, description, start_time, end_time,
+        capacity, location, template_id
+      ) values (
+        v_template.title,
+        v_template.instructor,
+        v_template.description,
+        (v_class_date + v_template.start_time) at time zone 'Europe/London',
+        (v_class_date + v_template.end_time) at time zone 'Europe/London',
+        v_template.capacity,
+        v_template.location,
+        v_template.id
+      );
+      v_count := v_count + 1;
+    end if;
+  end loop;
+
+  return v_count;
+end;
+$$;
+
+-- ── OPTIONAL: Automated weekly generation with pg_cron ──────────
+-- To automatically generate the next week's classes every Sunday at 22:00:
+--
+--   select cron.schedule(
+--     'generate-weekly-classes',
+--     '0 22 * * 0',  -- Sunday at 22:00 UTC
+--     $$select public.generate_classes_for_week(
+--       (date_trunc('week', CURRENT_DATE) + interval '7 days')::date
+--     )$$
+--   );
+--
+-- Enable pg_cron in: Supabase Dashboard > Database > Extensions > pg_cron

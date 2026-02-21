@@ -29,74 +29,182 @@
       <!-- Stats row -->
       <div class="stats-row" id="admin-stats"></div>
 
-      <div class="admin-layout">
-        <!-- Left: Add/Edit class form -->
-        <div>
-          <div class="card class-form-card">
-            <h2 id="form-title">Add New Class</h2>
-            <form id="class-form">
-              <input type="hidden" id="edit-class-id" value="">
-              <div class="form-group">
-                <label for="cls-title">Title</label>
-                <input type="text" id="cls-title" required placeholder="e.g. Spin Class">
-              </div>
-              <div class="form-group">
-                <label for="cls-instructor">Instructor</label>
-                <input type="text" id="cls-instructor" required placeholder="e.g. Sarah J.">
-              </div>
-              <div class="form-group">
-                <label for="cls-description">Description</label>
-                <textarea id="cls-description" placeholder="Optional description..."></textarea>
-              </div>
-              <div class="form-group">
-                <label for="cls-start">Start Time</label>
-                <input type="datetime-local" id="cls-start" required>
-              </div>
-              <div class="form-group">
-                <label for="cls-end">End Time</label>
-                <input type="datetime-local" id="cls-end" required>
-              </div>
-              <div class="form-group">
-                <label for="cls-capacity">Capacity</label>
-                <input type="number" id="cls-capacity" required min="1" value="20">
-              </div>
-              <div class="form-group">
-                <label for="cls-location">Location</label>
-                <input type="text" id="cls-location" required placeholder="e.g. Studio 1">
-              </div>
-              <div style="display:flex;gap:0.5rem;">
-                <button type="submit" class="btn btn-primary" id="form-submit">Add Class</button>
-                <button type="button" class="btn btn-outline" id="form-reset" style="display:none;">Cancel Edit</button>
-              </div>
-            </form>
-          </div>
-        </div>
+      <!-- Tab bar -->
+      <div class="admin-tabs">
+        <button class="tab-btn active" data-tab="classes" onclick="switchTab('classes')">Classes</button>
+        <button class="tab-btn" data-tab="templates" onclick="switchTab('templates')">Templates</button>
+      </div>
 
-        <!-- Right: Class list -->
-        <div>
-          <div class="card">
-            <h2 style="margin-bottom:1rem;">All Classes</h2>
-            <div class="table-wrap">
-              <table class="class-table">
-                <thead>
-                  <tr>
-                    <th>Title</th>
-                    <th>Date/Time</th>
-                    <th>Location</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="class-list"></tbody>
-              </table>
+      <!-- ═══ CLASSES TAB ═══ -->
+      <div id="tab-classes" class="tab-content">
+        <div class="admin-layout">
+          <!-- Left: Add/Edit class form -->
+          <div>
+            <div class="card class-form-card">
+              <h2 id="form-title">Add New Class</h2>
+              <form id="class-form">
+                <input type="hidden" id="edit-class-id" value="">
+                <div class="form-group">
+                  <label for="cls-title">Title</label>
+                  <input type="text" id="cls-title" required placeholder="e.g. Spin Class">
+                </div>
+                <div class="form-group">
+                  <label for="cls-instructor">Instructor</label>
+                  <input type="text" id="cls-instructor" required placeholder="e.g. Sarah J.">
+                </div>
+                <div class="form-group">
+                  <label for="cls-description">Description</label>
+                  <textarea id="cls-description" placeholder="Optional description..."></textarea>
+                </div>
+                <div class="form-group">
+                  <label for="cls-start">Start Time</label>
+                  <input type="datetime-local" id="cls-start" required>
+                </div>
+                <div class="form-group">
+                  <label for="cls-end">End Time</label>
+                  <input type="datetime-local" id="cls-end" required>
+                </div>
+                <div class="form-group">
+                  <label for="cls-capacity">Capacity</label>
+                  <input type="number" id="cls-capacity" required min="1" value="20">
+                </div>
+                <div class="form-group">
+                  <label for="cls-location">Location</label>
+                  <input type="text" id="cls-location" required placeholder="e.g. Studio 1">
+                </div>
+                <div style="display:flex;gap:0.5rem;">
+                  <button type="submit" class="btn btn-primary" id="form-submit">Add Class</button>
+                  <button type="button" class="btn btn-outline" id="form-reset" style="display:none;">Cancel Edit</button>
+                </div>
+              </form>
             </div>
           </div>
 
-          <!-- Bookings viewer (shows when a class is selected) -->
-          <div class="bookings-panel" id="bookings-panel" style="display:none;">
+          <!-- Right: Class list -->
+          <div>
             <div class="card">
-              <h3>Bookings for: <span id="bookings-class-name"></span></h3>
-              <ul class="attendee-list" id="attendee-list"></ul>
+              <h2 style="margin-bottom:1rem;">All Classes</h2>
+              <div class="table-wrap">
+                <table class="class-table">
+                  <thead>
+                    <tr>
+                      <th>Title</th>
+                      <th>Date/Time</th>
+                      <th>Location</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="class-list"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Bookings viewer (shows when a class is selected) -->
+            <div class="bookings-panel" id="bookings-panel" style="display:none;">
+              <div class="card">
+                <h3>Bookings for: <span id="bookings-class-name"></span></h3>
+                <ul class="attendee-list" id="attendee-list"></ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ TEMPLATES TAB ═══ -->
+      <div id="tab-templates" class="tab-content" style="display:none;">
+        <div class="admin-layout">
+          <!-- Left: Add/Edit template form -->
+          <div>
+            <div class="card class-form-card">
+              <h2 id="tpl-form-title">Add New Template</h2>
+              <form id="template-form">
+                <input type="hidden" id="edit-template-id" value="">
+                <div class="form-group">
+                  <label for="tpl-title">Title</label>
+                  <input type="text" id="tpl-title" required placeholder="e.g. Spinning">
+                </div>
+                <div class="form-group">
+                  <label for="tpl-instructor">Instructor</label>
+                  <input type="text" id="tpl-instructor" placeholder="TBC" value="TBC">
+                </div>
+                <div class="form-group">
+                  <label for="tpl-description">Description</label>
+                  <textarea id="tpl-description" placeholder="Optional description..."></textarea>
+                </div>
+                <div class="form-group">
+                  <label for="tpl-day">Day of Week</label>
+                  <select id="tpl-day" required>
+                    <option value="1">Monday</option>
+                    <option value="2">Tuesday</option>
+                    <option value="3">Wednesday</option>
+                    <option value="4">Thursday</option>
+                    <option value="5">Friday</option>
+                    <option value="6">Saturday</option>
+                    <option value="7">Sunday</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="tpl-start">Start Time</label>
+                  <input type="time" id="tpl-start" required>
+                </div>
+                <div class="form-group">
+                  <label for="tpl-end">End Time</label>
+                  <input type="time" id="tpl-end" required>
+                </div>
+                <div class="form-group">
+                  <label for="tpl-capacity">Capacity</label>
+                  <input type="number" id="tpl-capacity" required min="1" value="20">
+                </div>
+                <div class="form-group">
+                  <label for="tpl-location">Location</label>
+                  <input type="text" id="tpl-location" required placeholder="e.g. Studio" value="Studio">
+                </div>
+                <div style="display:flex;gap:0.5rem;">
+                  <button type="submit" class="btn btn-primary" id="tpl-submit">Add Template</button>
+                  <button type="button" class="btn btn-outline" id="tpl-reset" style="display:none;">Cancel Edit</button>
+                </div>
+              </form>
+            </div>
+
+            <!-- Generate classes card -->
+            <div class="card" style="margin-top:1.5rem;">
+              <h3 style="margin-bottom:0.5rem;">Generate Classes</h3>
+              <p style="margin-bottom:0.75rem;color:var(--color-text-muted);font-size:0.875rem;">
+                Create bookable class instances from active templates for upcoming weeks.
+                Duplicates are skipped automatically.
+              </p>
+              <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
+                <select id="generate-weeks" style="padding:0.4rem 0.5rem;border-radius:4px;border:1px solid var(--color-border);">
+                  <option value="1">Next 1 week</option>
+                  <option value="2">Next 2 weeks</option>
+                  <option value="4" selected>Next 4 weeks</option>
+                  <option value="8">Next 8 weeks</option>
+                </select>
+                <button class="btn btn-primary" id="generate-btn" onclick="generateClasses()">Generate</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: Template list -->
+          <div>
+            <div class="card">
+              <h2 style="margin-bottom:1rem;">Weekly Schedule Templates</h2>
+              <div class="table-wrap">
+                <table class="class-table">
+                  <thead>
+                    <tr>
+                      <th>Day</th>
+                      <th>Time</th>
+                      <th>Title</th>
+                      <th>Capacity</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="template-list"></tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
@@ -110,6 +218,8 @@
   <script src="js/auth.js"></script>
   <script src="js/admin.js"></script>
   <script>
+    const DAY_NAMES = ['', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
     document.addEventListener('DOMContentLoaded', async () => {
       bindLogout();
 
@@ -123,9 +233,21 @@
       await loadStats();
       await loadClasses();
       setupForm();
+      await loadTemplates();
+      setupTemplateForm();
     });
 
-    /** Load and render admin stats cards. */
+    // ── TAB SWITCHING ─────────────────────────────────────
+
+    function switchTab(tab) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
+      document.querySelector(`.tab-btn[data-tab="${tab}"]`).classList.add('active');
+      document.getElementById('tab-' + tab).style.display = '';
+    }
+
+    // ── STATS ─────────────────────────────────────────────
+
     async function loadStats() {
       try {
         const stats = await fetchAdminStats();
@@ -147,7 +269,8 @@
       }
     }
 
-    /** Load and render the full class list in the table. */
+    // ── CLASSES TAB ───────────────────────────────────────
+
     async function loadClasses() {
       try {
         const classes = await fetchAllClasses();
@@ -182,7 +305,6 @@
       }
     }
 
-    /** Set up the add/edit class form. */
     function setupForm() {
       const form = document.getElementById('class-form');
       const resetBtn = document.getElementById('form-reset');
@@ -234,7 +356,6 @@
       resetBtn.addEventListener('click', resetForm);
     }
 
-    /** Populate the form with existing class data for editing. */
     async function editClass(classId) {
       try {
         const { data: cls, error } = await supabase
@@ -258,14 +379,13 @@
         document.getElementById('form-submit').textContent = 'Save Changes';
         document.getElementById('form-reset').style.display = '';
 
-        // Scroll to form on mobile
+        switchTab('classes');
         document.getElementById('class-form').scrollIntoView({ behavior: 'smooth' });
       } catch (err) {
         showToast('Failed to load class for editing.', 'error');
       }
     }
 
-    /** Reset the form back to "Add" mode. */
     function resetForm() {
       document.getElementById('class-form').reset();
       document.getElementById('edit-class-id').value = '';
@@ -274,7 +394,6 @@
       document.getElementById('form-reset').style.display = 'none';
     }
 
-    /** Toggle cancel/restore on a class. */
     async function toggleCancel(classId, cancel) {
       const action = cancel ? 'cancel' : 'restore';
       if (!confirmAction(`Are you sure you want to ${action} this class?`)) return;
@@ -289,7 +408,6 @@
       }
     }
 
-    /** Show the bookings panel for a specific class. */
     async function viewBookings(classId, className) {
       const panel = document.getElementById('bookings-panel');
       const list = document.getElementById('attendee-list');
@@ -320,6 +438,197 @@
         }).join('');
       } catch (err) {
         list.innerHTML = '<li style="color:var(--color-danger);">Failed to load bookings.</li>';
+      }
+    }
+
+    // ── TEMPLATES TAB ─────────────────────────────────────
+
+    async function loadTemplates() {
+      try {
+        const templates = await fetchAllTemplates();
+        const tbody = document.getElementById('template-list');
+
+        if (!templates.length) {
+          tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--color-text-muted);">No templates yet. Add one to get started.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = templates.map(t => `
+          <tr>
+            <td>${DAY_NAMES[t.day_of_week]}</td>
+            <td>${t.start_time.slice(0, 5)} – ${t.end_time.slice(0, 5)}</td>
+            <td><strong>${escapeHtml(t.title)}</strong><br><small>${escapeHtml(t.instructor)}</small></td>
+            <td>${t.capacity}</td>
+            <td>${t.is_active
+              ? '<span class="badge badge-confirmed">Active</span>'
+              : '<span class="badge badge-cancelled">Inactive</span>'}</td>
+            <td class="actions">
+              <button class="btn btn-sm btn-outline" onclick="editTemplate('${t.id}')">Edit</button>
+              <button class="btn btn-sm ${t.is_active ? 'btn-danger' : 'btn-primary'}"
+                onclick="toggleTemplateActiveUI('${t.id}', ${!t.is_active})">
+                ${t.is_active ? 'Disable' : 'Enable'}
+              </button>
+              <button class="btn btn-sm btn-danger" onclick="deleteTemplateUI('${t.id}')">Delete</button>
+            </td>
+          </tr>
+        `).join('');
+      } catch (err) {
+        showToast('Failed to load templates.', 'error');
+      }
+    }
+
+    function setupTemplateForm() {
+      const form = document.getElementById('template-form');
+      const resetBtn = document.getElementById('tpl-reset');
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const submitBtn = document.getElementById('tpl-submit');
+        setLoading(submitBtn, true);
+
+        const startTime = document.getElementById('tpl-start').value;
+        const endTime = document.getElementById('tpl-end').value;
+
+        if (endTime <= startTime) {
+          showToast('End time must be after start time.', 'error');
+          setLoading(submitBtn, false);
+          return;
+        }
+
+        const templateData = {
+          title: document.getElementById('tpl-title').value.trim(),
+          instructor: document.getElementById('tpl-instructor').value.trim() || 'TBC',
+          description: document.getElementById('tpl-description').value.trim(),
+          day_of_week: parseInt(document.getElementById('tpl-day').value, 10),
+          start_time: startTime,
+          end_time: endTime,
+          capacity: parseInt(document.getElementById('tpl-capacity').value, 10),
+          location: document.getElementById('tpl-location').value.trim()
+        };
+
+        const editId = document.getElementById('edit-template-id').value;
+
+        try {
+          if (editId) {
+            await updateTemplate(editId, templateData);
+            showToast('Template updated.', 'success');
+          } else {
+            await createTemplate(templateData);
+            showToast('Template created.', 'success');
+          }
+          resetTemplateForm();
+          await loadTemplates();
+        } catch (err) {
+          showToast(err.message, 'error');
+        } finally {
+          setLoading(submitBtn, false);
+        }
+      });
+
+      resetBtn.addEventListener('click', resetTemplateForm);
+    }
+
+    async function editTemplate(templateId) {
+      try {
+        const { data: tpl, error } = await supabase
+          .from('class_templates')
+          .select('*')
+          .eq('id', templateId)
+          .single();
+
+        if (error) throw error;
+
+        document.getElementById('edit-template-id').value = tpl.id;
+        document.getElementById('tpl-title').value = tpl.title;
+        document.getElementById('tpl-instructor').value = tpl.instructor;
+        document.getElementById('tpl-description').value = tpl.description || '';
+        document.getElementById('tpl-day').value = tpl.day_of_week;
+        document.getElementById('tpl-start').value = tpl.start_time.slice(0, 5);
+        document.getElementById('tpl-end').value = tpl.end_time.slice(0, 5);
+        document.getElementById('tpl-capacity').value = tpl.capacity;
+        document.getElementById('tpl-location').value = tpl.location;
+
+        document.getElementById('tpl-form-title').textContent = 'Edit Template';
+        document.getElementById('tpl-submit').textContent = 'Save Changes';
+        document.getElementById('tpl-reset').style.display = '';
+
+        switchTab('templates');
+        document.getElementById('template-form').scrollIntoView({ behavior: 'smooth' });
+      } catch (err) {
+        showToast('Failed to load template for editing.', 'error');
+      }
+    }
+
+    function resetTemplateForm() {
+      document.getElementById('template-form').reset();
+      document.getElementById('edit-template-id').value = '';
+      document.getElementById('tpl-form-title').textContent = 'Add New Template';
+      document.getElementById('tpl-submit').textContent = 'Add Template';
+      document.getElementById('tpl-reset').style.display = 'none';
+      // Restore defaults
+      document.getElementById('tpl-instructor').value = 'TBC';
+      document.getElementById('tpl-capacity').value = '20';
+      document.getElementById('tpl-location').value = 'Studio';
+    }
+
+    async function toggleTemplateActiveUI(templateId, activate) {
+      const action = activate ? 'enable' : 'disable';
+      if (!confirmAction(`Are you sure you want to ${action} this template?`)) return;
+
+      try {
+        await toggleTemplateActive(templateId, activate);
+        showToast(`Template ${action}d.`, 'success');
+        await loadTemplates();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function deleteTemplateUI(templateId) {
+      if (!confirmAction('Delete this template? Existing class instances will be kept but unlinked.')) return;
+
+      try {
+        await deleteTemplate(templateId);
+        showToast('Template deleted.', 'success');
+        await loadTemplates();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    // ── GENERATE CLASSES ──────────────────────────────────
+
+    async function generateClasses() {
+      const numWeeks = parseInt(document.getElementById('generate-weeks').value, 10);
+      const btn = document.getElementById('generate-btn');
+
+      setLoading(btn, true);
+
+      try {
+        const currentMonday = getWeekStart(new Date());
+        let totalGenerated = 0;
+
+        for (let i = 0; i < numWeeks; i++) {
+          const weekStart = new Date(currentMonday);
+          weekStart.setDate(weekStart.getDate() + (i * 7));
+
+          // Format as YYYY-MM-DD
+          const y = weekStart.getFullYear();
+          const m = String(weekStart.getMonth() + 1).padStart(2, '0');
+          const d = String(weekStart.getDate()).padStart(2, '0');
+          const dateStr = `${y}-${m}-${d}`;
+
+          const count = await generateWeekClasses(dateStr);
+          totalGenerated += count;
+        }
+
+        showToast(`Generated ${totalGenerated} new class${totalGenerated !== 1 ? 'es' : ''}.`, 'success');
+        await loadClasses();
+        await loadStats();
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        setLoading(btn, false);
       }
     }
   </script>

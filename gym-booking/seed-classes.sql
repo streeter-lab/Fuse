@@ -1,139 +1,111 @@
 -- ============================================================
 -- FUSE Fitness - Seed Classes
 -- Run this in the Supabase SQL Editor AFTER supabase-setup.sql.
--- Populates the weekly timetable for the next 4 weeks.
+--
+-- 1. Inserts the recurring weekly class templates
+-- 2. Generates the first 4 weeks of bookable class instances
 -- ============================================================
 
--- Helper: generate classes for a given week starting on Monday.
--- We use a DO block to loop over 4 weeks starting from the next Monday.
+-- Clear existing data (safe for initial setup / re-seeding)
+DELETE FROM public.bookings;
+DELETE FROM public.classes;
+DELETE FROM public.class_templates;
+
+-- ── INSERT CLASS TEMPLATES ────────────────────────────────
+-- day_of_week: 1=Monday, 2=Tuesday, ..., 7=Sunday
+-- Default capacity: 20 | Default location: Studio | Instructor: TBC
+
+INSERT INTO public.class_templates
+  (title, instructor, description, day_of_week, start_time, end_time, capacity, location)
+VALUES
+  -- Monday
+  ('Lower Body Conditioning', 'TBC',
+    'Targeted lower body strength and conditioning workout.',
+    1, '17:45', '18:30', 20, 'Studio'),
+  ('Spinning', 'TBC',
+    'High-energy indoor cycling session.',
+    1, '18:30', '19:15', 20, 'Studio'),
+
+  -- Tuesday
+  ('Dumbbell Shred', 'TBC',
+    'Full-body dumbbell workout to build strength and burn fat.',
+    2, '18:00', '19:00', 20, 'Studio'),
+  ('Upper Body Conditioning', 'TBC',
+    'Focused upper body strength and conditioning.',
+    2, '19:00', '19:45', 20, 'Studio'),
+
+  -- Wednesday
+  ('Spinning', 'TBC',
+    'Midweek indoor cycling session.',
+    3, '18:00', '18:45', 20, 'Studio'),
+  ('ATHX Strength', 'TBC',
+    'Athletic strength training session.',
+    3, '18:50', '19:50', 20, 'Studio'),
+
+  -- Thursday
+  ('HYROX', 'TBC',
+    'HYROX-style functional fitness training.',
+    4, '18:15', '19:30', 20, 'Studio'),
+
+  -- Friday
+  ('Boxfit Circuit', 'TBC',
+    'Boxing-inspired circuit training for cardio and strength.',
+    5, '18:15', '19:15', 20, 'Studio'),
+
+  -- Saturday
+  ('Spinning', 'TBC',
+    'Weekend morning cycling session.',
+    6, '09:00', '09:45', 20, 'Studio'),
+
+  -- Sunday
+  ('Sweat Workout of the Day', 'TBC',
+    'High-intensity workout of the day.',
+    7, '09:30', '10:30', 20, 'Studio');
+
+-- ── GENERATE FIRST 4 WEEKS OF CLASSES ─────────────────────
+-- Creates bookable class instances from the templates above,
+-- starting from the Monday of the current week.
 
 DO $$
 DECLARE
   week_start date;
   i integer;
+  v_template record;
+  v_class_date date;
 BEGIN
-  -- Set timezone to UK local time so plain timestamps are interpreted correctly
-  -- during both GMT (UTC+0) and BST (UTC+1) periods.
+  -- Use UK timezone so class times are correct across GMT/BST
   PERFORM set_config('timezone', 'Europe/London', true);
 
-  -- Start from the Monday of this week (or next Monday if today is after Monday)
+  -- Start from the Monday of the current week
   week_start := date_trunc('week', CURRENT_DATE)::date;
 
   FOR i IN 0..3 LOOP
+    FOR v_template IN
+      SELECT * FROM public.class_templates WHERE is_active = true
+    LOOP
+      -- Calculate the actual date for this template's day in the given week
+      v_class_date := week_start + (i * 7) + (v_template.day_of_week - 1);
 
-    -- ── MONDAY ──────────────────────────────────
-    INSERT INTO public.classes (title, instructor, description, start_time, end_time, capacity, location) VALUES
-    ('Spin',       'Sarah J.', 'High-energy indoor cycling session. All levels welcome.',
-      (week_start + i*7)::timestamp + interval '6 hours',
-      (week_start + i*7)::timestamp + interval '6 hours 45 minutes', 20, 'Studio 1'),
-    ('Yoga',       'Mike R.',  'Vinyasa flow to build flexibility and strength.',
-      (week_start + i*7)::timestamp + interval '9 hours 30 minutes',
-      (week_start + i*7)::timestamp + interval '10 hours 30 minutes', 25, 'Studio 2'),
-    ('HIIT',       'Sarah J.', 'Fast-paced high-intensity interval training. Torch calories.',
-      (week_start + i*7)::timestamp + interval '12 hours 15 minutes',
-      (week_start + i*7)::timestamp + interval '12 hours 45 minutes', 30, 'Main Floor'),
-    ('Body Pump',  'Chris T.', 'Barbell-based strength workout targeting all major muscle groups.',
-      (week_start + i*7)::timestamp + interval '17 hours 30 minutes',
-      (week_start + i*7)::timestamp + interval '18 hours 15 minutes', 25, 'Studio 1'),
-    ('Spin',       'Sarah J.', 'Evening cycling session to close out the day strong.',
-      (week_start + i*7)::timestamp + interval '18 hours 30 minutes',
-      (week_start + i*7)::timestamp + interval '19 hours 15 minutes', 20, 'Studio 1');
-
-    -- ── TUESDAY ─────────────────────────────────
-    INSERT INTO public.classes (title, instructor, description, start_time, end_time, capacity, location) VALUES
-    ('HIIT',       'Chris T.', 'Early morning HIIT to kickstart your day.',
-      (week_start + i*7 + 1)::timestamp + interval '6 hours',
-      (week_start + i*7 + 1)::timestamp + interval '6 hours 30 minutes', 30, 'Main Floor'),
-    ('Pilates',    'Emma L.',  'Core-focused mat Pilates for posture and stability.',
-      (week_start + i*7 + 1)::timestamp + interval '9 hours 30 minutes',
-      (week_start + i*7 + 1)::timestamp + interval '10 hours 15 minutes', 20, 'Studio 2'),
-    ('Spin',       'Sarah J.', 'Lunchtime ride to keep your energy up.',
-      (week_start + i*7 + 1)::timestamp + interval '12 hours 15 minutes',
-      (week_start + i*7 + 1)::timestamp + interval '13 hours', 20, 'Studio 1'),
-    ('Yoga',       'Mike R.',  'Evening wind-down yoga session.',
-      (week_start + i*7 + 1)::timestamp + interval '17 hours 30 minutes',
-      (week_start + i*7 + 1)::timestamp + interval '18 hours 30 minutes', 25, 'Studio 2'),
-    ('BoxFit',     'Chris T.', 'Boxing-inspired cardio and conditioning.',
-      (week_start + i*7 + 1)::timestamp + interval '18 hours 45 minutes',
-      (week_start + i*7 + 1)::timestamp + interval '19 hours 30 minutes', 25, 'Main Floor');
-
-    -- ── WEDNESDAY ───────────────────────────────
-    INSERT INTO public.classes (title, instructor, description, start_time, end_time, capacity, location) VALUES
-    ('Spin',       'Sarah J.', 'Midweek morning spin to keep the momentum going.',
-      (week_start + i*7 + 2)::timestamp + interval '6 hours',
-      (week_start + i*7 + 2)::timestamp + interval '6 hours 45 minutes', 20, 'Studio 1'),
-    ('Body Pump',  'Chris T.', 'Full-body barbell workout — push your limits.',
-      (week_start + i*7 + 2)::timestamp + interval '9 hours 30 minutes',
-      (week_start + i*7 + 2)::timestamp + interval '10 hours 15 minutes', 25, 'Studio 1'),
-    ('Yoga',       'Mike R.',  'Lunchtime stretch and flow.',
-      (week_start + i*7 + 2)::timestamp + interval '12 hours 15 minutes',
-      (week_start + i*7 + 2)::timestamp + interval '13 hours', 25, 'Studio 2'),
-    ('HIIT',       'Sarah J.', 'Evening HIIT blast — 30 minutes, max effort.',
-      (week_start + i*7 + 2)::timestamp + interval '17 hours 30 minutes',
-      (week_start + i*7 + 2)::timestamp + interval '18 hours', 30, 'Main Floor'),
-    ('Pilates',    'Emma L.',  'Evening Pilates for core and flexibility.',
-      (week_start + i*7 + 2)::timestamp + interval '18 hours 15 minutes',
-      (week_start + i*7 + 2)::timestamp + interval '19 hours', 20, 'Studio 2');
-
-    -- ── THURSDAY ────────────────────────────────
-    INSERT INTO public.classes (title, instructor, description, start_time, end_time, capacity, location) VALUES
-    ('HIIT',       'Chris T.', 'Early riser HIIT to get the blood pumping.',
-      (week_start + i*7 + 3)::timestamp + interval '6 hours',
-      (week_start + i*7 + 3)::timestamp + interval '6 hours 30 minutes', 30, 'Main Floor'),
-    ('Spin',       'Sarah J.', 'Mid-morning cycling session.',
-      (week_start + i*7 + 3)::timestamp + interval '9 hours 30 minutes',
-      (week_start + i*7 + 3)::timestamp + interval '10 hours 15 minutes', 20, 'Studio 1'),
-    ('Pilates',    'Emma L.',  'Lunchtime Pilates — strengthen and lengthen.',
-      (week_start + i*7 + 3)::timestamp + interval '12 hours 15 minutes',
-      (week_start + i*7 + 3)::timestamp + interval '13 hours', 20, 'Studio 2'),
-    ('BoxFit',     'Chris T.', 'Punch your way to fitness.',
-      (week_start + i*7 + 3)::timestamp + interval '17 hours 30 minutes',
-      (week_start + i*7 + 3)::timestamp + interval '18 hours 15 minutes', 25, 'Main Floor'),
-    ('Body Pump',  'Chris T.', 'Evening strength session with barbells.',
-      (week_start + i*7 + 3)::timestamp + interval '18 hours 30 minutes',
-      (week_start + i*7 + 3)::timestamp + interval '19 hours 15 minutes', 25, 'Studio 1');
-
-    -- ── FRIDAY ──────────────────────────────────
-    INSERT INTO public.classes (title, instructor, description, start_time, end_time, capacity, location) VALUES
-    ('Spin',       'Sarah J.', 'Friday morning spin — ride into the weekend.',
-      (week_start + i*7 + 4)::timestamp + interval '6 hours',
-      (week_start + i*7 + 4)::timestamp + interval '6 hours 45 minutes', 20, 'Studio 1'),
-    ('HIIT',       'Chris T.', 'Quick HIIT to finish the working week.',
-      (week_start + i*7 + 4)::timestamp + interval '9 hours 30 minutes',
-      (week_start + i*7 + 4)::timestamp + interval '10 hours', 30, 'Main Floor'),
-    ('Body Pump',  'Chris T.', 'Lunchtime pump — lift heavy, feel strong.',
-      (week_start + i*7 + 4)::timestamp + interval '12 hours 15 minutes',
-      (week_start + i*7 + 4)::timestamp + interval '13 hours', 25, 'Studio 1'),
-    ('Yoga',       'Mike R.',  'Slow-flow Friday evening yoga.',
-      (week_start + i*7 + 4)::timestamp + interval '17 hours 30 minutes',
-      (week_start + i*7 + 4)::timestamp + interval '18 hours 30 minutes', 25, 'Studio 2');
-
-    -- ── SATURDAY ────────────────────────────────
-    INSERT INTO public.classes (title, instructor, description, start_time, end_time, capacity, location) VALUES
-    ('HIIT',       'Chris T.', 'Weekend warrior HIIT.',
-      (week_start + i*7 + 5)::timestamp + interval '8 hours',
-      (week_start + i*7 + 5)::timestamp + interval '8 hours 45 minutes', 30, 'Main Floor'),
-    ('Spin',       'Sarah J.', 'Saturday morning ride.',
-      (week_start + i*7 + 5)::timestamp + interval '9 hours',
-      (week_start + i*7 + 5)::timestamp + interval '9 hours 45 minutes', 20, 'Studio 1'),
-    ('Yoga',       'Mike R.',  'Weekend yoga to recharge.',
-      (week_start + i*7 + 5)::timestamp + interval '10 hours',
-      (week_start + i*7 + 5)::timestamp + interval '11 hours', 25, 'Studio 2'),
-    ('Body Pump',  'Chris T.', 'Saturday strength session.',
-      (week_start + i*7 + 5)::timestamp + interval '11 hours 15 minutes',
-      (week_start + i*7 + 5)::timestamp + interval '12 hours', 25, 'Studio 1');
-
-    -- ── SUNDAY ──────────────────────────────────
-    INSERT INTO public.classes (title, instructor, description, start_time, end_time, capacity, location) VALUES
-    ('Yoga',       'Mike R.',  'Sunday morning slow yoga.',
-      (week_start + i*7 + 6)::timestamp + interval '9 hours',
-      (week_start + i*7 + 6)::timestamp + interval '10 hours', 25, 'Studio 2'),
-    ('Pilates',    'Emma L.',  'Sunday Pilates to stretch and recover.',
-      (week_start + i*7 + 6)::timestamp + interval '10 hours 15 minutes',
-      (week_start + i*7 + 6)::timestamp + interval '11 hours', 20, 'Studio 2'),
-    ('Spin',       'Sarah J.', 'Sunday spin to close out the week.',
-      (week_start + i*7 + 6)::timestamp + interval '11 hours 15 minutes',
-      (week_start + i*7 + 6)::timestamp + interval '12 hours', 20, 'Studio 1');
-
+      -- Only insert if not already existing (duplicate-safe)
+      IF NOT EXISTS (
+        SELECT 1 FROM public.classes
+        WHERE template_id = v_template.id
+          AND (start_time AT TIME ZONE 'Europe/London')::date = v_class_date
+      ) THEN
+        INSERT INTO public.classes (
+          title, instructor, description, start_time, end_time,
+          capacity, location, template_id
+        ) VALUES (
+          v_template.title,
+          v_template.instructor,
+          v_template.description,
+          (v_class_date + v_template.start_time) AT TIME ZONE 'Europe/London',
+          (v_class_date + v_template.end_time) AT TIME ZONE 'Europe/London',
+          v_template.capacity,
+          v_template.location,
+          v_template.id
+        );
+      END IF;
+    END LOOP;
   END LOOP;
 END $$;
