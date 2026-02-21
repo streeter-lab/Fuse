@@ -81,10 +81,14 @@ create policy "Users can view own profile"
   on public.profiles for select
   using (auth.uid() = id);
 
--- Profiles: users can update their own row
+-- Profiles: users can update their own row (but not privileged columns)
 create policy "Users can update own profile"
   on public.profiles for update
-  using (auth.uid() = id);
+  using (auth.uid() = id)
+  with check (
+    is_admin = (select p.is_admin from public.profiles p where p.id = auth.uid())
+    and membership_type = (select p.membership_type from public.profiles p where p.id = auth.uid())
+  );
 
 -- Profiles: allow inserts from the trigger (service role) and the user themselves
 create policy "Users can insert own profile"
@@ -257,9 +261,10 @@ begin
     raise exception 'You can only cancel your own bookings.';
   end if;
 
-  -- Fetch and verify the booking belongs to the user
+  -- Fetch and verify the booking belongs to the user (lock row to prevent double-cancel race)
   select * into v_booking from public.bookings
-  where id = p_booking_id and member_id = p_member_id;
+  where id = p_booking_id and member_id = p_member_id
+  for update;
 
   if v_booking is null then
     raise exception 'Booking not found.';
