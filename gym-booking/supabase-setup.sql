@@ -1,6 +1,10 @@
 -- ============================================================
--- Gym Booking App - Supabase SQL Setup
+-- FUSE Fitness - Supabase SQL Setup
 -- Run this entire script in the Supabase SQL Editor.
+-- ============================================================
+--
+-- IMPORTANT: Disable email verification in Supabase Dashboard:
+--   Authentication > Providers > Email > Turn OFF "Confirm email"
 -- ============================================================
 
 -- 1. TABLES

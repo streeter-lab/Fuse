@@ -1,5 +1,5 @@
-/* style.css - Main stylesheet for the Gym Booking App.
-   Mobile-first, dark header, white cards, vibrant accent. */
+/* style.css - Main stylesheet for FUSE Fitness Booking App.
+   Mobile-first, dark header, white cards, copper accent. */
 
 /* ── Custom Properties ─────────────────────────────── */
 :root {
@@ -7,9 +7,9 @@
   --color-surface:   #ffffff;
   --color-text:      #1a1a2e;
   --color-text-muted:#6b7280;
-  --color-accent:    #f97316;          /* vibrant orange */
-  --color-accent-hover: #ea580c;
-  --color-header:    #0f172a;          /* dark navy */
+  --color-accent:    #D4894A;          /* copper */
+  --color-accent-hover: #C07A3E;
+  --color-header:    #1B2D44;          /* dark denim blue */
   --color-header-text: #ffffff;
   --color-success:   #16a34a;
   --color-danger:    #dc2626;
@@ -194,7 +194,7 @@ h3 { font-size: 1.1rem;  font-weight: 600; }
 .form-group textarea:focus {
   outline: none;
   border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.15);
+  box-shadow: 0 0 0 3px rgba(212, 137, 74, 0.15);
 }
 
 .form-group textarea { resize: vertical; min-height: 80px; }
@@ -397,7 +397,7 @@ h3 { font-size: 1.1rem;  font-weight: 600; }
 .hero {
   text-align: center;
   padding: 4rem 1rem 3rem;
-  background: linear-gradient(135deg, var(--color-header) 0%, #1e293b 100%);
+  background: linear-gradient(135deg, var(--color-header) 0%, #243B53 100%);
   color: #fff;
 }
 

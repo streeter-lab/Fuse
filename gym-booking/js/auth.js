@@ -4,13 +4,15 @@
  * Sign up a new user with email/password and profile metadata.
  * Supabase stores full_name and phone in raw_user_meta_data so the
  * database trigger can copy them into the profiles table automatically.
+ * Email confirmation is disabled — users can sign in immediately.
  */
 async function signUp(email, password, fullName, phone) {
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
-      data: { full_name: fullName, phone }
+      data: { full_name: fullName, phone },
+      emailRedirectTo: window.location.origin
     }
   });
   if (error) throw error;
