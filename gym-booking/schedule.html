@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Class Schedule - FitBook</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- Header with navigation -->
+  <header class="site-header">
+    <div class="container">
+      <a href="index.html" class="logo">Fit<span>Book</span></a>
+      <nav class="site-nav">
+        <a href="schedule.html">Schedule</a>
+        <a href="dashboard.html">Dashboard</a>
+        <a href="login.html" id="nav-login">Login</a>
+        <a href="#" class="logout-btn" id="nav-logout" style="display:none;">Logout</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container page-content">
+    <h1 style="margin-bottom:1rem;">Class Schedule</h1>
+
+    <!-- Week navigation (prev / label / next) -->
+    <div class="week-nav" id="week-nav"></div>
+
+    <!-- 7-day grid rendered by JS -->
+    <div class="schedule-grid" id="schedule-grid">
+      <div class="spinner"></div>
+    </div>
+  </main>
+
+  <!-- Supabase CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="js/supabase.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/schedule.js"></script>
+  <script>
+    // Toggle login/logout nav links based on session
+    document.addEventListener('DOMContentLoaded', async () => {
+      const session = await getSession();
+      if (session) {
+        document.getElementById('nav-login').style.display = 'none';
+        document.getElementById('nav-logout').style.display = '';
+      }
+      bindLogout();
+      initSchedule();
+    });
+  </script>
+</body>
+</html>

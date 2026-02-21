@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Register - FitBook</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a href="index.html" class="logo">Fit<span>Book</span></a>
+      <nav class="site-nav">
+        <a href="schedule.html">Schedule</a>
+        <a href="login.html">Login</a>
+        <a href="register.html">Register</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container page-content">
+    <div class="auth-wrapper">
+      <div class="card">
+        <h1>Create Account</h1>
+        <form id="register-form">
+          <div class="form-group">
+            <label for="full-name">Full Name</label>
+            <input type="text" id="full-name" required placeholder="Jane Smith">
+          </div>
+          <div class="form-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" required placeholder="you@example.com">
+          </div>
+          <div class="form-group">
+            <label for="phone">Phone (optional)</label>
+            <input type="tel" id="phone" placeholder="07700 900000">
+          </div>
+          <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" required placeholder="Min 6 characters" minlength="6">
+          </div>
+          <div class="form-group">
+            <label for="confirm-password">Confirm Password</label>
+            <input type="password" id="confirm-password" required placeholder="Repeat password" minlength="6">
+          </div>
+          <button type="submit" class="btn btn-primary" style="width:100%;" id="register-btn">Create Account</button>
+        </form>
+        <div class="auth-footer">
+          Already have an account? <a href="login.html">Sign in</a>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="js/supabase.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      // If already logged in, redirect to dashboard
+      const session = await getSession();
+      if (session) {
+        window.location.href = 'dashboard.html';
+        return;
+      }
+
+      document.getElementById('register-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('register-btn');
+
+        const fullName = document.getElementById('full-name').value.trim();
+        const email = document.getElementById('email').value.trim();
+        const phone = document.getElementById('phone').value.trim();
+        const password = document.getElementById('password').value;
+        const confirmPassword = document.getElementById('confirm-password').value;
+
+        // Validate passwords match
+        if (password !== confirmPassword) {
+          showToast('Passwords do not match.', 'error');
+          return;
+        }
+
+        setLoading(btn, true);
+
+        try {
+          await signUp(email, password, fullName, phone);
+          showToast('Account created! Check your email to confirm, then sign in.', 'success');
+          // Redirect to login after a short delay
+          setTimeout(() => { window.location.href = 'login.html'; }, 2000);
+        } catch (err) {
+          showToast(err.message, 'error');
+          setLoading(btn, false);
+        }
+      });
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - FitBook</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a href="index.html" class="logo">Fit<span>Book</span></a>
+      <nav class="site-nav">
+        <a href="schedule.html">Schedule</a>
+        <a href="login.html">Login</a>
+        <a href="register.html">Register</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container page-content">
+    <div class="auth-wrapper">
+      <div class="card">
+        <h1>Sign In</h1>
+        <form id="login-form">
+          <div class="form-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" required placeholder="you@example.com">
+          </div>
+          <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" required placeholder="Your password" minlength="6">
+          </div>
+          <button type="submit" class="btn btn-primary" style="width:100%;" id="login-btn">Sign In</button>
+        </form>
+        <div class="auth-footer">
+          Don't have an account? <a href="register.html">Register here</a>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="js/supabase.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      // If already logged in, redirect to dashboard
+      const session = await getSession();
+      if (session) {
+        window.location.href = 'dashboard.html';
+        return;
+      }
+
+      document.getElementById('login-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('login-btn');
+        setLoading(btn, true);
+
+        const email = document.getElementById('email').value.trim();
+        const password = document.getElementById('password').value;
+
+        try {
+          await signIn(email, password);
+          window.location.href = 'dashboard.html';
+        } catch (err) {
+          showToast(err.message, 'error');
+          setLoading(btn, false);
+        }
+      });
+    });
+  </script>
+</body>
+</html>
