@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Register - FitBook</title>
+  <title>Register - FUSE Fitness</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
   <header class="site-header">
     <div class="container">
-      <a href="index.html" class="logo">Fit<span>Book</span></a>
+      <a href="index.html" class="logo">FUSE<span>Fitness</span></a>
       <nav class="site-nav">
         <a href="schedule.html">Schedule</a>
         <a href="login.html">Login</a>
@@ -78,10 +78,14 @@
         setLoading(btn, true);
 
         try {
-          await signUp(email, password, fullName, phone);
-          showToast('Account created! Check your email to confirm, then sign in.', 'success');
-          // Redirect to login after a short delay
-          setTimeout(() => { window.location.href = 'login.html'; }, 2000);
+          const result = await signUp(email, password, fullName, phone);
+          showToast('Account created! Redirecting...', 'success');
+          // If session exists (email verification disabled), go straight to dashboard
+          if (result.session) {
+            setTimeout(() => { window.location.href = 'dashboard.html'; }, 1000);
+          } else {
+            setTimeout(() => { window.location.href = 'login.html'; }, 1500);
+          }
         } catch (err) {
           showToast(err.message, 'error');
           setLoading(btn, false);
