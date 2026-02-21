@@ -40,19 +40,13 @@
     </div>
   </main>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/supabase.js"></script>
   <script src="js/utils.js"></script>
   <script src="js/auth.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', async () => {
-      // If already logged in, redirect to dashboard
-      const session = await getSession();
-      if (session) {
-        window.location.href = 'dashboard.html';
-        return;
-      }
-
+      // Always attach the form handler first
       document.getElementById('login-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const btn = document.getElementById('login-btn');
@@ -69,6 +63,16 @@
           setLoading(btn, false);
         }
       });
+
+      // If already logged in, redirect to dashboard
+      try {
+        const session = await getSession();
+        if (session) {
+          window.location.href = 'dashboard.html';
+        }
+      } catch {
+        // Auth unavailable — stay on login page
+      }
     });
   </script>
 </body>

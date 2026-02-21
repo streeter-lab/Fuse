@@ -59,21 +59,25 @@
     FitBook &copy; 2026. Built for your gym.
   </footer>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/supabase.js"></script>
   <script src="js/utils.js"></script>
   <script src="js/auth.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', async () => {
-      const session = await getSession();
-      if (session) {
-        // Logged-in nav state
-        document.getElementById('nav-login').style.display = 'none';
-        document.getElementById('nav-register').style.display = 'none';
-        document.getElementById('nav-dashboard').style.display = '';
-        document.getElementById('nav-logout').style.display = '';
-        document.getElementById('hero-register').style.display = 'none';
-        document.getElementById('hero-dashboard').style.display = '';
+      try {
+        const session = await getSession();
+        if (session) {
+          // Logged-in nav state
+          document.getElementById('nav-login').style.display = 'none';
+          document.getElementById('nav-register').style.display = 'none';
+          document.getElementById('nav-dashboard').style.display = '';
+          document.getElementById('nav-logout').style.display = '';
+          document.getElementById('hero-register').style.display = 'none';
+          document.getElementById('hero-dashboard').style.display = '';
+        }
+      } catch {
+        // Auth unavailable — keep default nav state
       }
       bindLogout();
     });
