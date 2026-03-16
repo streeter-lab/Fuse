@@ -20,6 +20,7 @@
       <nav class="site-nav">
         <a href="schedule.html">Schedule</a>
         <a href="dashboard.html">Dashboard</a>
+        <a href="profile.html">Profile</a>
         <a href="admin.html">Admin</a>
         <a href="#" class="logout-btn">Logout</a>
       </nav>
@@ -39,6 +40,7 @@
       <div class="admin-tabs">
         <button class="tab-btn active" data-tab="classes" onclick="switchTab('classes')">Classes</button>
         <button class="tab-btn" data-tab="templates" onclick="switchTab('templates')">Templates</button>
+        <button class="tab-btn" data-tab="members" onclick="switchTab('members')">Members</button>
       </div>
 
       <!-- ═══ CLASSES TAB ═══ -->
@@ -113,6 +115,102 @@
                 <ul class="attendee-list" id="attendee-list"></ul>
               </div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ MEMBERS TAB ═══ -->
+      <div id="tab-members" class="tab-content" style="display:none;">
+        <!-- Search and filter bar -->
+        <div class="card" style="margin-bottom:1.5rem;">
+          <div class="members-toolbar">
+            <input type="text" id="member-search" placeholder="Search by name, email, or phone..." class="member-search-input">
+            <select id="member-filter" class="member-filter-select">
+              <option value="all">All Members</option>
+              <option value="standard">Standard</option>
+              <option value="premium">Premium</option>
+            </select>
+            <button class="btn btn-primary btn-sm" onclick="openAddMemberForm()">Add Member</button>
+          </div>
+          <div id="member-count" style="font-size:0.85rem;color:var(--color-text-muted);margin-top:0.5rem;"></div>
+        </div>
+
+        <!-- Add Member form (hidden by default) -->
+        <div id="add-member-card" class="card" style="display:none;margin-bottom:1.5rem;">
+          <h3 style="margin-bottom:1rem;">Add New Member</h3>
+          <form id="add-member-form">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
+              <div class="form-group"><label for="new-member-name">Full Name</label><input type="text" id="new-member-name" required></div>
+              <div class="form-group"><label for="new-member-email">Email</label><input type="email" id="new-member-email" required></div>
+              <div class="form-group"><label for="new-member-phone">Phone</label><input type="tel" id="new-member-phone" required></div>
+              <div class="form-group"><label for="new-member-type">Membership</label><select id="new-member-type"><option value="standard">Standard</option><option value="premium">Premium</option></select></div>
+            </div>
+            <div class="form-group">
+              <label>Temporary Password</label>
+              <div style="display:flex;gap:0.5rem;align-items:center;">
+                <input type="text" id="new-member-password" readonly style="font-family:monospace;background:var(--color-bg);">
+                <button type="button" class="btn btn-sm btn-outline" onclick="generateTempPassword()">Regenerate</button>
+              </div>
+            </div>
+            <p style="font-size:0.8rem;color:var(--color-warning);margin-bottom:0.75rem;font-weight:600;">
+              Note: Admin user creation requires a Supabase Edge Function. Deploy supabase/functions/create-member/ to enable this feature.
+            </p>
+            <div style="display:flex;gap:0.5rem;">
+              <button type="submit" class="btn btn-primary" id="add-member-btn">Create Member</button>
+              <button type="button" class="btn btn-outline" onclick="closeAddMemberForm()">Cancel</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Members table -->
+        <div class="card">
+          <div class="table-wrap">
+            <table class="class-table" id="members-table">
+              <thead>
+                <tr>
+                  <th style="cursor:pointer;" onclick="sortMembers('full_name')">Name</th>
+                  <th>Email</th>
+                  <th>Phone</th>
+                  <th>Membership</th>
+                  <th style="cursor:pointer;" onclick="sortMembers('created_at')">Joined</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="member-list"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Member detail panel (hidden by default) -->
+        <div id="member-detail-panel" class="card" style="display:none;margin-top:1.5rem;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+            <h3>Member Details</h3>
+            <button class="btn btn-sm btn-outline" onclick="closeMemberDetail()">Close</button>
+          </div>
+          <div id="member-detail-content"></div>
+        </div>
+
+        <!-- Edit member modal -->
+        <div id="edit-member-modal" class="modal-overlay" style="display:none;">
+          <div class="card modal-card">
+            <h3 style="margin-bottom:1rem;">Edit Member</h3>
+            <form id="edit-member-form">
+              <input type="hidden" id="edit-member-id">
+              <div class="form-group"><label for="edit-member-name">Full Name</label><input type="text" id="edit-member-name" required></div>
+              <div class="form-group"><label for="edit-member-phone">Phone</label><input type="tel" id="edit-member-phone"></div>
+              <div class="form-group"><label for="edit-member-type">Membership Type</label><select id="edit-member-type"><option value="standard">Standard</option><option value="premium">Premium</option></select></div>
+              <div class="form-group">
+                <label style="display:flex;align-items:center;gap:0.5rem;font-weight:400;cursor:pointer;">
+                  <input type="checkbox" id="edit-member-admin" style="width:auto;">
+                  <span>Admin privileges</span>
+                </label>
+              </div>
+              <div style="display:flex;gap:0.5rem;">
+                <button type="submit" class="btn btn-primary" id="edit-member-btn">Save Changes</button>
+                <button type="button" class="btn btn-outline" onclick="closeEditMember()">Cancel</button>
+              </div>
+            </form>
           </div>
         </div>
       </div>
@@ -241,6 +339,8 @@
       setupForm();
       await loadTemplates();
       setupTemplateForm();
+      setupMembersTab();
+      await loadMembers();
     });
 
     // ── TAB SWITCHING ─────────────────────────────────────
@@ -589,6 +689,262 @@
       } catch (err) {
         showToast(err.message, 'error');
       }
+    }
+
+    // ── MEMBERS TAB ─────────────────────────────────────
+
+    let memberSortField = 'created_at';
+    let memberSortAsc = false;
+    let memberSearchTimeout = null;
+
+    async function loadMembers() {
+      const search = document.getElementById('member-search').value;
+      const filter = document.getElementById('member-filter').value;
+
+      try {
+        const { members, totalCount } = await fetchAllMembers(search, filter);
+        document.getElementById('member-count').textContent = `${totalCount} member${totalCount !== 1 ? 's' : ''} found`;
+
+        const tbody = document.getElementById('member-list');
+        if (!members.length) {
+          tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--color-text-muted);">No members found.</td></tr>';
+          return;
+        }
+
+        // Sort client-side
+        members.sort((a, b) => {
+          let va = a[memberSortField] || '';
+          let vb = b[memberSortField] || '';
+          if (typeof va === 'string') va = va.toLowerCase();
+          if (typeof vb === 'string') vb = vb.toLowerCase();
+          if (va < vb) return memberSortAsc ? -1 : 1;
+          if (va > vb) return memberSortAsc ? 1 : -1;
+          return 0;
+        });
+
+        tbody.innerHTML = members.map(m => {
+          const isActive = m.is_active !== false;
+          const statusBadge = isActive
+            ? '<span class="badge badge-confirmed">Active</span>'
+            : '<span class="badge badge-cancelled">Deactivated</span>';
+          const typeBadge = m.membership_type === 'premium'
+            ? '<span class="badge" style="background:#e0e7ff;color:#3730a3;">Premium</span>'
+            : '<span class="badge" style="background:#f3f4f6;color:#374151;">Standard</span>';
+
+          return `<tr>
+            <td><strong>${escapeHtml(m.full_name || 'Unnamed')}</strong>${m.is_admin ? ' <span class="badge" style="background:#fef3c7;color:#92400e;font-size:0.65rem;">ADMIN</span>' : ''}</td>
+            <td>${escapeHtml(m.email || '')}</td>
+            <td>${escapeHtml(m.phone || '')}</td>
+            <td>${typeBadge}</td>
+            <td>${m.created_at ? formatDateShort(m.created_at) : ''}</td>
+            <td>${statusBadge}</td>
+            <td class="actions">
+              <button class="btn btn-sm btn-outline" onclick="viewMember('${m.id}')">View</button>
+              <button class="btn btn-sm btn-secondary" onclick="editMember('${m.id}')">Edit</button>
+              <button class="btn btn-sm ${isActive ? 'btn-danger' : 'btn-primary'}" onclick="toggleMemberActive('${m.id}', ${!isActive})">
+                ${isActive ? 'Deactivate' : 'Activate'}
+              </button>
+            </td>
+          </tr>`;
+        }).join('');
+      } catch (err) {
+        showToast('Failed to load members: ' + err.message, 'error');
+      }
+    }
+
+    function sortMembers(field) {
+      if (memberSortField === field) {
+        memberSortAsc = !memberSortAsc;
+      } else {
+        memberSortField = field;
+        memberSortAsc = true;
+      }
+      loadMembers();
+    }
+
+    async function viewMember(memberId) {
+      const panel = document.getElementById('member-detail-panel');
+      const content = document.getElementById('member-detail-content');
+      panel.style.display = '';
+      content.innerHTML = '<div class="spinner"></div>';
+
+      try {
+        const member = await fetchMemberDetail(memberId);
+        const bookings = await fetchMemberBookingHistory(memberId);
+
+        const now = new Date();
+        const upcoming = bookings.filter(b => b.classes && new Date(b.classes.start_time) >= now && b.status !== 'cancelled');
+        const past = bookings.filter(b => b.classes && new Date(b.classes.start_time) < now);
+        const attended = past.filter(b => b.status === 'confirmed').length;
+        const cancelled = bookings.filter(b => b.status === 'cancelled').length;
+
+        content.innerHTML = `
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem;">
+            <div><strong>Name:</strong> ${escapeHtml(member.full_name || '')}</div>
+            <div><strong>Email:</strong> ${escapeHtml(member.email || '')}</div>
+            <div><strong>Phone:</strong> ${escapeHtml(member.phone || '')}</div>
+            <div><strong>Membership:</strong> ${escapeHtml(member.membership_type || 'standard')}</div>
+            <div><strong>Emergency Contact:</strong> ${escapeHtml(member.emergency_contact_name || 'Not set')} ${member.emergency_contact_phone ? '(' + escapeHtml(member.emergency_contact_phone) + ')' : ''}</div>
+            <div><strong>Medical Notes:</strong> ${escapeHtml(member.medical_notes || 'None')}</div>
+            <div><strong>Joined:</strong> ${member.created_at ? formatDateTime(member.created_at) : ''}</div>
+            <div><strong>Status:</strong> ${member.is_active !== false ? 'Active' : 'Deactivated'}</div>
+          </div>
+
+          <h4 style="margin-bottom:0.5rem;">Booking Stats</h4>
+          <p style="font-size:0.9rem;color:var(--color-text-muted);margin-bottom:1rem;">
+            ${attended} classes attended &middot; ${cancelled} cancellations &middot; ${upcoming.length} upcoming
+          </p>
+
+          ${upcoming.length > 0 ? `
+            <h4 style="margin-bottom:0.5rem;">Upcoming Bookings</h4>
+            <ul class="attendee-list" style="margin-bottom:1rem;">
+              ${upcoming.map(b => `<li>${escapeHtml(b.classes.title)} — ${formatDateTime(b.classes.start_time)} <span class="badge ${b.status === 'confirmed' ? 'badge-confirmed' : 'badge-waitlist'}">${b.status}</span></li>`).join('')}
+            </ul>
+          ` : ''}
+
+          ${past.length > 0 ? `
+            <h4 style="margin-bottom:0.5rem;">Recent Past Bookings</h4>
+            <ul class="attendee-list">
+              ${past.slice(0, 10).map(b => `<li>${escapeHtml(b.classes.title)} — ${formatDateTime(b.classes.start_time)} <span class="badge ${b.status === 'confirmed' ? 'badge-confirmed' : b.status === 'waitlist' ? 'badge-waitlist' : 'badge-cancelled'}">${b.status}</span></li>`).join('')}
+            </ul>
+          ` : '<p style="font-size:0.9rem;color:var(--color-text-muted);">No booking history.</p>'}
+        `;
+
+        panel.scrollIntoView({ behavior: 'smooth' });
+      } catch (err) {
+        content.innerHTML = '<p style="color:var(--color-danger);">Failed to load member details.</p>';
+      }
+    }
+
+    function closeMemberDetail() {
+      document.getElementById('member-detail-panel').style.display = 'none';
+    }
+
+    async function editMember(memberId) {
+      try {
+        const member = await fetchMemberDetail(memberId);
+        document.getElementById('edit-member-id').value = member.id;
+        document.getElementById('edit-member-name').value = member.full_name || '';
+        document.getElementById('edit-member-phone').value = member.phone || '';
+        document.getElementById('edit-member-type').value = member.membership_type || 'standard';
+        document.getElementById('edit-member-admin').checked = member.is_admin || false;
+        document.getElementById('edit-member-modal').style.display = '';
+      } catch (err) {
+        showToast('Failed to load member for editing.', 'error');
+      }
+    }
+
+    function closeEditMember() {
+      document.getElementById('edit-member-modal').style.display = 'none';
+    }
+
+    async function toggleMemberActive(memberId, activate) {
+      const action = activate ? 'activate' : 'deactivate';
+      if (!confirmAction(`Are you sure you want to ${action} this member?`)) return;
+
+      try {
+        await updateMemberProfile(memberId, { is_active: activate });
+        showToast(`Member ${action}d.`, 'success');
+        await loadMembers();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    function generateTempPassword() {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+      let password = '';
+      for (let i = 0; i < 12; i++) {
+        password += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      document.getElementById('new-member-password').value = password;
+      return password;
+    }
+
+    function openAddMemberForm() {
+      generateTempPassword();
+      document.getElementById('add-member-card').style.display = '';
+      document.getElementById('add-member-card').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function closeAddMemberForm() {
+      document.getElementById('add-member-card').style.display = 'none';
+      document.getElementById('add-member-form').reset();
+    }
+
+    function setupMembersTab() {
+      // Search with debounce
+      document.getElementById('member-search').addEventListener('input', () => {
+        clearTimeout(memberSearchTimeout);
+        memberSearchTimeout = setTimeout(loadMembers, 300);
+      });
+
+      // Filter change
+      document.getElementById('member-filter').addEventListener('change', loadMembers);
+
+      // Edit member form
+      document.getElementById('edit-member-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('edit-member-btn');
+        setLoading(btn, true);
+
+        const memberId = document.getElementById('edit-member-id').value;
+        try {
+          await updateMemberProfile(memberId, {
+            full_name: document.getElementById('edit-member-name').value.trim(),
+            phone: document.getElementById('edit-member-phone').value.trim(),
+            membership_type: document.getElementById('edit-member-type').value,
+            is_admin: document.getElementById('edit-member-admin').checked
+          });
+          showToast('Member updated.', 'success');
+          closeEditMember();
+          await loadMembers();
+          await loadStats();
+        } catch (err) {
+          showToast(err.message, 'error');
+        } finally {
+          setLoading(btn, false);
+        }
+      });
+
+      // Add member form
+      document.getElementById('add-member-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('add-member-btn');
+        setLoading(btn, true);
+
+        const email = document.getElementById('new-member-email').value.trim();
+        const password = document.getElementById('new-member-password').value;
+        const fullName = document.getElementById('new-member-name').value.trim();
+        const phone = document.getElementById('new-member-phone').value.trim();
+        const membershipType = document.getElementById('new-member-type').value;
+
+        try {
+          // Try calling the Edge Function
+          const response = await fetch(SUPABASE_URL + '/functions/v1/create-member', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + (await supabase.auth.getSession()).data.session.access_token
+            },
+            body: JSON.stringify({ email, password, full_name: fullName, phone, membership_type: membershipType })
+          });
+
+          if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.error || 'Edge Function not available. Deploy supabase/functions/create-member/ first.');
+          }
+
+          showToast('Member created! Temporary password: ' + password, 'success');
+          closeAddMemberForm();
+          await loadMembers();
+          await loadStats();
+        } catch (err) {
+          showToast(err.message, 'error');
+        } finally {
+          setLoading(btn, false);
+        }
+      });
     }
 
     // ── GENERATE CLASSES ──────────────────────────────────

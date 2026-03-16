@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Profile & Settings - FUSE Fitness</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#1B2D44">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="FUSE Fitness">
+  <link rel="apple-touch-icon" href="icons/icon-192.svg">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a href="index.html" class="logo">FUSE<span>Fitness</span></a>
+      <nav class="site-nav">
+        <a href="schedule.html">Schedule</a>
+        <a href="dashboard.html">Dashboard</a>
+        <a href="profile.html">Profile</a>
+        <a href="admin.html" id="nav-admin" style="display:none;">Admin</a>
+        <a href="#" class="logout-btn">Logout</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container page-content">
+    <div id="profile-loading" class="spinner"></div>
+
+    <div id="profile-content" style="display:none;max-width:640px;">
+      <h1 style="margin-bottom:1.5rem;">Profile & Settings</h1>
+
+      <!-- Personal Info -->
+      <div class="card">
+        <h2 style="margin-bottom:1rem;">Personal Information</h2>
+        <form id="personal-form">
+          <div class="form-group">
+            <label for="prof-name">Full Name</label>
+            <input type="text" id="prof-name" required>
+          </div>
+          <div class="form-group">
+            <label for="prof-phone">Phone</label>
+            <input type="tel" id="prof-phone" required>
+          </div>
+          <div class="form-group">
+            <label for="prof-emergency-name">Emergency Contact Name</label>
+            <input type="text" id="prof-emergency-name">
+          </div>
+          <div class="form-group">
+            <label for="prof-emergency-phone">Emergency Contact Phone</label>
+            <input type="tel" id="prof-emergency-phone">
+          </div>
+          <div class="form-group">
+            <label for="prof-medical">Medical Conditions / Injuries</label>
+            <textarea id="prof-medical" placeholder="Leave blank if none"></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary" id="save-personal-btn">Save Changes</button>
+        </form>
+      </div>
+
+      <!-- Account -->
+      <div class="card">
+        <h2 style="margin-bottom:1rem;">Account</h2>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="prof-email" disabled style="background:var(--color-bg);cursor:not-allowed;">
+        </div>
+        <div class="form-group">
+          <label>Membership</label>
+          <input type="text" id="prof-membership" disabled style="background:var(--color-bg);cursor:not-allowed;text-transform:capitalize;">
+        </div>
+
+        <h3 style="margin-top:1.5rem;margin-bottom:0.75rem;">Change Password</h3>
+        <form id="password-form">
+          <div class="form-group">
+            <label for="new-password">New Password</label>
+            <input type="password" id="new-password" required placeholder="Min 6 characters" minlength="6">
+          </div>
+          <div class="form-group">
+            <label for="confirm-password">Confirm New Password</label>
+            <input type="password" id="confirm-password" required placeholder="Repeat password" minlength="6">
+          </div>
+          <button type="submit" class="btn btn-primary" id="change-pw-btn">Update Password</button>
+        </form>
+      </div>
+
+      <!-- Booking History -->
+      <div class="card">
+        <h2 style="margin-bottom:0.5rem;">Booking History</h2>
+        <p id="booking-count" style="color:var(--color-text-muted);font-size:0.9rem;margin-bottom:1rem;"></p>
+        <div id="booking-history"></div>
+      </div>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="js/supabase.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      bindLogout();
+
+      const session = await requireAuth();
+      if (!session) return;
+
+      try {
+        const profile = await getProfile();
+        if (!profile) throw new Error('Profile not found');
+
+        // Show admin link if applicable
+        if (profile.is_admin) {
+          document.getElementById('nav-admin').style.display = '';
+        }
+
+        // Populate personal info
+        document.getElementById('prof-name').value = profile.full_name || '';
+        document.getElementById('prof-phone').value = profile.phone || '';
+        document.getElementById('prof-emergency-name').value = profile.emergency_contact_name || '';
+        document.getElementById('prof-emergency-phone').value = profile.emergency_contact_phone || '';
+        document.getElementById('prof-medical').value = profile.medical_notes || '';
+
+        // Account info
+        document.getElementById('prof-email').value = profile.email || session.user.email;
+        document.getElementById('prof-membership').value = profile.membership_type || 'standard';
+
+        // Load booking history
+        await loadBookingHistory(session.user.id);
+
+        document.getElementById('profile-loading').style.display = 'none';
+        document.getElementById('profile-content').style.display = '';
+      } catch (err) {
+        document.getElementById('profile-loading').style.display = 'none';
+        showToast('Failed to load profile: ' + err.message, 'error');
+      }
+
+      // Save personal info
+      document.getElementById('personal-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('save-personal-btn');
+        setLoading(btn, true);
+
+        try {
+          const { error } = await supabase
+            .from('profiles')
+            .update({
+              full_name: document.getElementById('prof-name').value.trim(),
+              phone: document.getElementById('prof-phone').value.trim(),
+              emergency_contact_name: document.getElementById('prof-emergency-name').value.trim(),
+              emergency_contact_phone: document.getElementById('prof-emergency-phone').value.trim(),
+              medical_notes: document.getElementById('prof-medical').value.trim()
+            })
+            .eq('id', session.user.id);
+
+          if (error) throw error;
+          showToast('Changes saved.', 'success');
+        } catch (err) {
+          showToast(err.message, 'error');
+        } finally {
+          setLoading(btn, false);
+        }
+      });
+
+      // Change password
+      document.getElementById('password-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('change-pw-btn');
+
+        const newPw = document.getElementById('new-password').value;
+        const confirmPw = document.getElementById('confirm-password').value;
+
+        if (newPw !== confirmPw) {
+          showToast('Passwords do not match.', 'error');
+          return;
+        }
+
+        setLoading(btn, true);
+
+        try {
+          await updatePassword(newPw);
+          showToast('Password updated.', 'success');
+          document.getElementById('password-form').reset();
+        } catch (err) {
+          showToast(err.message, 'error');
+        } finally {
+          setLoading(btn, false);
+        }
+      });
+    });
+
+    async function loadBookingHistory(memberId) {
+      const countEl = document.getElementById('booking-count');
+      const listEl = document.getElementById('booking-history');
+
+      try {
+        // Fetch past bookings (classes where start_time < now)
+        const { data: bookings, error } = await supabase
+          .from('bookings')
+          .select(`
+            id, status, booked_at,
+            classes (id, title, instructor, start_time, end_time, location)
+          `)
+          .eq('member_id', memberId)
+          .in('status', ['confirmed', 'waitlist', 'cancelled'])
+          .order('booked_at', { ascending: false });
+
+        if (error) throw error;
+
+        // Filter to past classes only
+        const now = new Date();
+        const past = (bookings || []).filter(b => b.classes && new Date(b.classes.start_time) < now);
+        const attended = past.filter(b => b.status === 'confirmed').length;
+
+        countEl.textContent = `You've attended ${attended} class${attended !== 1 ? 'es' : ''} (${past.length} total bookings)`;
+
+        if (!past.length) {
+          listEl.innerHTML = '<p class="empty-state" style="padding:1rem;">No past bookings yet.</p>';
+          return;
+        }
+
+        listEl.innerHTML = past.map(b => {
+          const cls = b.classes;
+          const badgeClass = b.status === 'confirmed' ? 'badge-confirmed'
+            : b.status === 'waitlist' ? 'badge-waitlist' : 'badge-cancelled';
+          return `
+            <div class="booking-card" style="margin-bottom:0.5rem;padding:0.75rem;">
+              <div class="booking-info">
+                <div class="booking-title">${escapeHtml(cls.title)}</div>
+                <div class="booking-meta">
+                  ${formatDateShort(cls.start_time)}, ${formatTimeRange(cls.start_time, cls.end_time)}
+                  &middot; ${escapeHtml(cls.location)}
+                </div>
+              </div>
+              <span class="badge ${badgeClass}">${escapeHtml(b.status)}</span>
+            </div>`;
+        }).join('');
+      } catch (err) {
+        listEl.innerHTML = '<p style="color:var(--color-danger);">Failed to load booking history.</p>';
+      }
+    }
+  </script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js')
+        .then(reg => console.log('SW registered:', reg.scope))
+        .catch(err => console.warn('SW registration failed:', err));
+    }
+  </script>
+</body>
+</html>

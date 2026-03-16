@@ -1,4 +1,4 @@
-// admin.js - Admin CRUD operations for classes and booking management.
+// admin.js - Admin CRUD operations for classes, templates, and member management.
 
 /**
  * Fetch all classes ordered by start_time descending (newest first).
@@ -222,4 +222,88 @@ async function fetchAdminStats() {
     classesThisWeek: classesThisWeek || 0,
     totalMembers: totalMembers || 0
   };
+}
+
+// ── MEMBER MANAGEMENT ───────────────────────────────────
+
+/**
+ * Fetch all members with optional search and membership filter.
+ * Returns { members, totalCount }.
+ */
+async function fetchAllMembers(search, membershipFilter, page, pageSize) {
+  page = page || 1;
+  pageSize = pageSize || 50;
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
+  let query = supabase
+    .from('profiles')
+    .select('*', { count: 'exact' });
+
+  // Text search across name, email, phone
+  if (search && search.trim()) {
+    const s = '%' + search.trim() + '%';
+    query = query.or(
+      'full_name.ilike.' + s + ',email.ilike.' + s + ',phone.ilike.' + s
+    );
+  }
+
+  // Membership filter
+  if (membershipFilter && membershipFilter !== 'all') {
+    query = query.eq('membership_type', membershipFilter);
+  }
+
+  query = query.order('created_at', { ascending: false }).range(from, to);
+
+  const { data, count, error } = await query;
+  if (error) throw error;
+
+  return { members: data || [], totalCount: count || 0 };
+}
+
+/**
+ * Fetch a single member's full profile.
+ */
+async function fetchMemberDetail(memberId) {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', memberId)
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * Admin update to a member's profile (can change privileged fields).
+ */
+async function updateMemberProfile(memberId, updates) {
+  const { data, error } = await supabase
+    .from('profiles')
+    .update(updates)
+    .eq('id', memberId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * Fetch all bookings for a specific member with class details.
+ */
+async function fetchMemberBookingHistory(memberId) {
+  const { data, error } = await supabase
+    .from('bookings')
+    .select(`
+      id, status, booked_at,
+      classes (id, title, instructor, start_time, end_time, location, is_cancelled)
+    `)
+    .eq('member_id', memberId)
+    .in('status', ['confirmed', 'waitlist', 'cancelled'])
+    .order('booked_at', { ascending: false });
+
+  if (error) throw error;
+  return data || [];
 }

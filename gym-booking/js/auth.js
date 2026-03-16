@@ -2,16 +2,20 @@
 
 /**
  * Sign up a new user with email/password and profile metadata.
- * Supabase stores full_name and phone in raw_user_meta_data so the
+ * Supabase stores the metadata in raw_user_meta_data so the
  * database trigger can copy them into the profiles table automatically.
  * Email confirmation is disabled — users can sign in immediately.
+ *
+ * @param {string} email
+ * @param {string} password
+ * @param {object} metadata - { full_name, phone, emergency_contact_name, emergency_contact_phone, medical_notes, terms_accepted }
  */
-async function signUp(email, password, fullName, phone) {
+async function signUp(email, password, metadata) {
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
-      data: { full_name: fullName, phone },
+      data: metadata,
       emailRedirectTo: window.location.origin
     }
   });
@@ -71,6 +75,7 @@ async function getProfile() {
 
 /**
  * Redirect away from pages that require authentication.
+ * Also checks if the user's account is deactivated.
  * Call at the top of dashboard, book, admin pages.
  */
 async function requireAuth() {
@@ -79,6 +84,24 @@ async function requireAuth() {
     window.location.href = 'login.html';
     return null;
   }
+
+  // Check if account is deactivated
+  try {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('is_active')
+      .eq('id', session.user.id)
+      .single();
+
+    if (profile && profile.is_active === false) {
+      await supabase.auth.signOut();
+      window.location.href = 'login.html?deactivated=true';
+      return null;
+    }
+  } catch {
+    // If profile fetch fails, allow through (column may not exist yet)
+  }
+
   return session;
 }
 
@@ -95,6 +118,39 @@ async function requireAdmin() {
     return null;
   }
   return profile;
+}
+
+/**
+ * Check if onboarding is complete. If not, redirect to complete-profile page.
+ * Returns the profile if onboarding is complete, or null if redirected.
+ */
+async function requireOnboarding() {
+  const profile = await getProfile();
+  if (!profile) return null;
+
+  if (profile.onboarding_complete === false) {
+    window.location.href = 'complete-profile.html';
+    return null;
+  }
+  return profile;
+}
+
+/**
+ * Send a password reset email.
+ */
+async function resetPassword(email) {
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin + '/reset-password.html'
+  });
+  if (error) throw error;
+}
+
+/**
+ * Update the current user's password.
+ */
+async function updatePassword(newPassword) {
+  const { error } = await supabase.auth.updateUser({ password: newPassword });
+  if (error) throw error;
 }
 
 /**
