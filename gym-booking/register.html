@@ -25,32 +25,87 @@
   </header>
 
   <main class="container page-content">
-    <div class="auth-wrapper">
+    <div class="auth-wrapper auth-wrapper-wide">
       <div class="card">
         <h1>Create Account</h1>
+
+        <!-- Step indicators -->
+        <div class="step-indicators">
+          <div class="step-indicator active" data-step="1"><span>1</span> Account</div>
+          <div class="step-indicator" data-step="2"><span>2</span> Health & Safety</div>
+          <div class="step-indicator" data-step="3"><span>3</span> Terms</div>
+        </div>
+
         <form id="register-form">
-          <div class="form-group">
-            <label for="full-name">Full Name</label>
-            <input type="text" id="full-name" required placeholder="Jane Smith">
+          <!-- Step 1: Account Details -->
+          <div class="form-step" id="step-1">
+            <div class="form-group">
+              <label for="full-name">Full Name</label>
+              <input type="text" id="full-name" required placeholder="Jane Smith">
+            </div>
+            <div class="form-group">
+              <label for="email">Email</label>
+              <input type="email" id="email" required placeholder="you@example.com">
+            </div>
+            <div class="form-group">
+              <label for="phone">Phone</label>
+              <input type="tel" id="phone" required placeholder="07700 900000">
+            </div>
+            <div class="form-group">
+              <label for="password">Password</label>
+              <input type="password" id="password" required placeholder="Min 6 characters" minlength="6">
+            </div>
+            <div class="form-group">
+              <label for="confirm-password">Confirm Password</label>
+              <input type="password" id="confirm-password" required placeholder="Repeat password" minlength="6">
+            </div>
+            <button type="button" class="btn btn-primary" style="width:100%;" onclick="goToStep(2)">Next</button>
           </div>
-          <div class="form-group">
-            <label for="email">Email</label>
-            <input type="email" id="email" required placeholder="you@example.com">
+
+          <!-- Step 2: Health & Safety -->
+          <div class="form-step" id="step-2" style="display:none;">
+            <div class="form-group">
+              <label for="emergency-name">Emergency Contact Name</label>
+              <input type="text" id="emergency-name" required placeholder="John Smith">
+            </div>
+            <div class="form-group">
+              <label for="emergency-phone">Emergency Contact Phone</label>
+              <input type="tel" id="emergency-phone" required placeholder="07700 900001">
+            </div>
+            <div class="form-group">
+              <label for="medical-notes">Medical Conditions / Injuries (optional)</label>
+              <textarea id="medical-notes" placeholder="e.g. asthma, knee injury — leave blank if none"></textarea>
+            </div>
+            <div style="display:flex;gap:0.5rem;">
+              <button type="button" class="btn btn-outline" style="flex:1;" onclick="goToStep(1)">Back</button>
+              <button type="button" class="btn btn-primary" style="flex:1;" onclick="goToStep(3)">Next</button>
+            </div>
           </div>
-          <div class="form-group">
-            <label for="phone">Phone (optional)</label>
-            <input type="tel" id="phone" placeholder="07700 900000">
+
+          <!-- Step 3: Terms & Waiver -->
+          <div class="form-step" id="step-3" style="display:none;">
+            <div class="terms-summary">
+              <h3>Terms & Conditions</h3>
+              <ul>
+                <li>I confirm I am physically fit to participate in fitness classes</li>
+                <li>I understand FUSE Fitness is not liable for injuries sustained during classes</li>
+                <li>I agree to the cancellation policy: bookings must be cancelled at least 2 hours before the class start time</li>
+                <li>I consent to my emergency contact being notified in case of an incident</li>
+              </ul>
+            </div>
+            <div class="form-group" style="margin-top:1rem;">
+              <label style="display:flex;align-items:flex-start;gap:0.5rem;font-weight:400;cursor:pointer;">
+                <input type="checkbox" id="terms-accepted" required style="width:auto;margin-top:0.25rem;">
+                <span>I agree to the terms and conditions</span>
+              </label>
+            </div>
+            <div style="display:flex;gap:0.5rem;">
+              <button type="button" class="btn btn-outline" style="flex:1;" onclick="goToStep(2)">Back</button>
+              <button type="submit" class="btn btn-primary" style="flex:1;" id="register-btn">Create Account</button>
+            </div>
           </div>
-          <div class="form-group">
-            <label for="password">Password</label>
-            <input type="password" id="password" required placeholder="Min 6 characters" minlength="6">
-          </div>
-          <div class="form-group">
-            <label for="confirm-password">Confirm Password</label>
-            <input type="password" id="confirm-password" required placeholder="Repeat password" minlength="6">
-          </div>
-          <button type="submit" class="btn btn-primary" style="width:100%;" id="register-btn">Create Account</button>
         </form>
+
         <div class="auth-footer">
           Already have an account? <a href="login.html">Sign in</a>
         </div>
@@ -63,30 +118,99 @@
   <script src="js/utils.js"></script>
   <script src="js/auth.js"></script>
   <script>
-    document.addEventListener('DOMContentLoaded', async () => {
-      // Always attach the form handler first
-      document.getElementById('register-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const btn = document.getElementById('register-btn');
+    let currentStep = 1;
 
+    function goToStep(step) {
+      // Validate current step before advancing
+      if (step > currentStep) {
+        if (!validateStep(currentStep)) return;
+      }
+
+      document.querySelectorAll('.form-step').forEach(s => s.style.display = 'none');
+      document.getElementById('step-' + step).style.display = '';
+
+      document.querySelectorAll('.step-indicator').forEach(ind => {
+        const s = parseInt(ind.dataset.step);
+        ind.classList.toggle('active', s === step);
+        ind.classList.toggle('completed', s < step);
+      });
+
+      currentStep = step;
+    }
+
+    function validateStep(step) {
+      if (step === 1) {
         const fullName = document.getElementById('full-name').value.trim();
         const email = document.getElementById('email').value.trim();
         const phone = document.getElementById('phone').value.trim();
         const password = document.getElementById('password').value;
         const confirmPassword = document.getElementById('confirm-password').value;
 
-        // Validate passwords match
+        if (!fullName || !email || !phone || !password || !confirmPassword) {
+          showToast('Please fill in all required fields.', 'error');
+          return false;
+        }
+
+        if (password.length < 6) {
+          showToast('Password must be at least 6 characters.', 'error');
+          return false;
+        }
+
         if (password !== confirmPassword) {
           showToast('Passwords do not match.', 'error');
+          return false;
+        }
+
+        return true;
+      }
+
+      if (step === 2) {
+        const emergencyName = document.getElementById('emergency-name').value.trim();
+        const emergencyPhone = document.getElementById('emergency-phone').value.trim();
+
+        if (!emergencyName || !emergencyPhone) {
+          showToast('Please provide emergency contact details.', 'error');
+          return false;
+        }
+
+        return true;
+      }
+
+      return true;
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      document.getElementById('register-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        if (!validateStep(1) || !validateStep(2)) {
+          showToast('Please complete all required fields.', 'error');
           return;
         }
 
+        if (!document.getElementById('terms-accepted').checked) {
+          showToast('You must agree to the terms and conditions.', 'error');
+          return;
+        }
+
+        const btn = document.getElementById('register-btn');
         setLoading(btn, true);
 
+        const email = document.getElementById('email').value.trim();
+        const password = document.getElementById('password').value;
+
+        const metadata = {
+          full_name: document.getElementById('full-name').value.trim(),
+          phone: document.getElementById('phone').value.trim(),
+          emergency_contact_name: document.getElementById('emergency-name').value.trim(),
+          emergency_contact_phone: document.getElementById('emergency-phone').value.trim(),
+          medical_notes: document.getElementById('medical-notes').value.trim(),
+          terms_accepted: 'true'
+        };
+
         try {
-          const result = await signUp(email, password, fullName, phone);
+          const result = await signUp(email, password, metadata);
           showToast('Account created! Redirecting...', 'success');
-          // If session exists (email verification disabled), go straight to dashboard
           if (result.session) {
             setTimeout(() => { window.location.href = 'dashboard.html'; }, 1000);
           } else {

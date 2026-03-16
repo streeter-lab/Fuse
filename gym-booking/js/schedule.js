@@ -72,9 +72,13 @@ function renderWeekNav(container, currentWeek, onChange) {
 
 /**
  * Render the 7-day schedule grid from an array of class objects.
+ * membershipType is used to show booking window indicators.
  */
-function renderScheduleGrid(container, classes, weekStart) {
+function renderScheduleGrid(container, classes, weekStart, membershipType) {
   const days = getWeekDays(weekStart);
+  const now = new Date();
+  const maxDays = membershipType === 'premium' ? 14 : 7;
+  const bookingCutoff = new Date(now.getTime() + maxDays * 24 * 60 * 60 * 1000);
 
   // Group classes by day-of-week index (0=Mon ... 6=Sun)
   const grouped = {};
@@ -100,18 +104,24 @@ function renderScheduleGrid(container, classes, weekStart) {
     }
 
     grouped[i].forEach(c => {
+      const classStart = new Date(c.start_time);
+      const outsideWindow = membershipType && classStart > bookingCutoff;
+
       const spotsClass = c.is_cancelled ? '' :
+        outsideWindow ? 'not-bookable' :
         c.spotsLeft > 3 ? 'available' :
         c.spotsLeft > 0 ? 'low' : 'full';
 
       const spotsText = c.is_cancelled ? 'Cancelled' :
+        outsideWindow ? (membershipType === 'standard' ? 'Premium early access' : 'Not yet available') :
         c.spotsLeft > 0 ? `${c.spotsLeft} spots left` : 'Full';
 
       const cancelledClass = c.is_cancelled ? ' cancelled' : '';
+      const notBookableClass = outsideWindow ? ' not-bookable-card' : '';
       const href = c.is_cancelled ? '#' : `book.html?id=${c.id}`;
 
       html += `
-        <a href="${href}" class="class-card${cancelledClass}" style="display:block;text-decoration:none;color:inherit;">
+        <a href="${href}" class="class-card${cancelledClass}${notBookableClass}" style="display:block;text-decoration:none;color:inherit;">
           <div class="class-title">${escapeHtml(c.title)}</div>
           <div class="class-meta">${formatTimeRange(c.start_time, c.end_time)} &middot; ${escapeHtml(c.location)}</div>
           <div class="class-meta">${escapeHtml(c.instructor)}</div>
@@ -135,6 +145,22 @@ async function initSchedule() {
 
   let currentWeek = getWeekStart(new Date());
 
+  // Try to get membership type if logged in
+  let membershipType = null;
+  try {
+    const session = await getSession();
+    if (session) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('membership_type')
+        .eq('id', session.user.id)
+        .single();
+      if (profile) membershipType = profile.membership_type;
+    }
+  } catch {
+    // Not logged in or profile unavailable
+  }
+
   async function loadWeek(weekStart) {
     currentWeek = weekStart;
     renderWeekNav(weekNav, currentWeek, loadWeek);
@@ -147,7 +173,7 @@ async function initSchedule() {
       );
 
       const classes = await Promise.race([fetchPromise, timeoutPromise]);
-      renderScheduleGrid(grid, classes, currentWeek);
+      renderScheduleGrid(grid, classes, currentWeek, membershipType);
     } catch (err) {
       grid.innerHTML = `
         <div class="empty-state">

@@ -96,3 +96,44 @@
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
+
+/* ── Members Tab ──────────────────────────────────── */
+.members-toolbar {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.member-search-input {
+  flex: 1;
+  min-width: 200px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  font-family: var(--font);
+}
+
+.member-search-input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px rgba(212, 137, 74, 0.15);
+}
+
+.member-filter-select {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  font-family: var(--font);
+}
+
+@media (max-width: 600px) {
+  .members-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .member-search-input { min-width: auto; }
+}

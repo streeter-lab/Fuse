@@ -19,6 +19,7 @@
       <nav class="site-nav">
         <a href="schedule.html">Schedule</a>
         <a href="dashboard.html">Dashboard</a>
+        <a href="profile.html">Profile</a>
         <a href="admin.html" id="nav-admin" style="display:none;">Admin</a>
         <a href="#" class="logout-btn">Logout</a>
       </nav>
@@ -59,6 +60,12 @@
 
       try {
         const profile = await getProfile();
+
+        // Check onboarding
+        if (profile && profile.onboarding_complete === false) {
+          window.location.href = 'complete-profile.html';
+          return;
+        }
 
         // Show admin link if applicable
         if (profile.is_admin) {

@@ -19,6 +19,7 @@
       <nav class="site-nav">
         <a href="schedule.html">Schedule</a>
         <a href="dashboard.html">Dashboard</a>
+        <a href="profile.html">Profile</a>
         <a href="#" class="logout-btn">Logout</a>
       </nav>
     </div>
@@ -79,6 +80,13 @@
 
       const session = await requireAuth();
       if (!session) return;
+
+      // Check onboarding
+      const profile = await getProfile();
+      if (profile && profile.onboarding_complete === false) {
+        window.location.href = 'complete-profile.html';
+        return;
+      }
 
       const params = getQueryParams();
       if (!params.id) {
@@ -145,6 +153,24 @@
 
       if (cls.is_cancelled) {
         statusEl.innerHTML = '<p style="color:var(--color-danger);font-weight:600;">This class has been cancelled.</p>';
+        return;
+      }
+
+      // Check booking window
+      const memberProfile = await getProfile();
+      const membershipType = memberProfile ? memberProfile.membership_type : 'standard';
+      const maxDays = membershipType === 'premium' ? 14 : 7;
+      const bookingCutoff = new Date(Date.now() + maxDays * 24 * 60 * 60 * 1000);
+      const classStart = new Date(cls.start_time);
+
+      if (!myBooking && classStart > bookingCutoff) {
+        const availableFrom = new Date(classStart.getTime() - maxDays * 24 * 60 * 60 * 1000);
+        statusEl.innerHTML = `
+          <p style="color:var(--color-text-muted);font-weight:600;">Not yet available for booking</p>
+          <p style="font-size:0.85rem;color:var(--color-text-muted);margin-top:0.25rem;">
+            Available to book from ${formatDateShort(availableFrom)}.
+            ${membershipType !== 'premium' ? '<br>Upgrade to <strong>Premium</strong> for 14-day early access.' : ''}
+          </p>`;
         return;
       }
 

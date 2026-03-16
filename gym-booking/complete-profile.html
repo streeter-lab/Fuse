@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Complete Your Profile - FUSE Fitness</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#1B2D44">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="FUSE Fitness">
+  <link rel="apple-touch-icon" href="icons/icon-192.svg">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a href="index.html" class="logo">FUSE<span>Fitness</span></a>
+      <nav class="site-nav">
+        <a href="#" class="logout-btn">Logout</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container page-content">
+    <div class="auth-wrapper auth-wrapper-wide">
+      <div class="card">
+        <h1>Complete Your Profile</h1>
+        <p style="text-align:center;color:var(--color-text-muted);margin-bottom:1.5rem;font-size:0.9rem;">
+          We need a few more details before you can start booking classes.
+        </p>
+
+        <div id="profile-loading" class="spinner"></div>
+
+        <form id="complete-form" style="display:none;">
+          <!-- Step indicators -->
+          <div class="step-indicators">
+            <div class="step-indicator active" data-step="1"><span>1</span> Health & Safety</div>
+            <div class="step-indicator" data-step="2"><span>2</span> Terms</div>
+          </div>
+
+          <!-- Step 1: Health & Safety -->
+          <div class="form-step" id="step-1">
+            <div class="form-group">
+              <label for="emergency-name">Emergency Contact Name</label>
+              <input type="text" id="emergency-name" required placeholder="John Smith">
+            </div>
+            <div class="form-group">
+              <label for="emergency-phone">Emergency Contact Phone</label>
+              <input type="tel" id="emergency-phone" required placeholder="07700 900001">
+            </div>
+            <div class="form-group">
+              <label for="medical-notes">Medical Conditions / Injuries (optional)</label>
+              <textarea id="medical-notes" placeholder="e.g. asthma, knee injury — leave blank if none"></textarea>
+            </div>
+            <button type="button" class="btn btn-primary" style="width:100%;" onclick="goToStep(2)">Next</button>
+          </div>
+
+          <!-- Step 2: Terms & Waiver -->
+          <div class="form-step" id="step-2" style="display:none;">
+            <div class="terms-summary">
+              <h3>Terms & Conditions</h3>
+              <ul>
+                <li>I confirm I am physically fit to participate in fitness classes</li>
+                <li>I understand FUSE Fitness is not liable for injuries sustained during classes</li>
+                <li>I agree to the cancellation policy: bookings must be cancelled at least 2 hours before the class start time</li>
+                <li>I consent to my emergency contact being notified in case of an incident</li>
+              </ul>
+            </div>
+            <div class="form-group" style="margin-top:1rem;">
+              <label style="display:flex;align-items:flex-start;gap:0.5rem;font-weight:400;cursor:pointer;">
+                <input type="checkbox" id="terms-accepted" required style="width:auto;margin-top:0.25rem;">
+                <span>I agree to the terms and conditions</span>
+              </label>
+            </div>
+            <div style="display:flex;gap:0.5rem;">
+              <button type="button" class="btn btn-outline" style="flex:1;" onclick="goToStep(1)">Back</button>
+              <button type="submit" class="btn btn-primary" style="flex:1;" id="complete-btn">Complete Profile</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="js/supabase.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    let currentStep = 1;
+
+    function goToStep(step) {
+      if (step > currentStep && !validateStep(currentStep)) return;
+
+      document.querySelectorAll('.form-step').forEach(s => s.style.display = 'none');
+      document.getElementById('step-' + step).style.display = '';
+
+      document.querySelectorAll('.step-indicator').forEach(ind => {
+        const s = parseInt(ind.dataset.step);
+        ind.classList.toggle('active', s === step);
+        ind.classList.toggle('completed', s < step);
+      });
+
+      currentStep = step;
+    }
+
+    function validateStep(step) {
+      if (step === 1) {
+        const emergencyName = document.getElementById('emergency-name').value.trim();
+        const emergencyPhone = document.getElementById('emergency-phone').value.trim();
+        if (!emergencyName || !emergencyPhone) {
+          showToast('Please provide emergency contact details.', 'error');
+          return false;
+        }
+        return true;
+      }
+      return true;
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      bindLogout();
+
+      const session = await requireAuth();
+      if (!session) return;
+
+      // Check if already completed
+      try {
+        const profile = await getProfile();
+        if (profile && profile.onboarding_complete) {
+          window.location.href = 'dashboard.html';
+          return;
+        }
+
+        // Pre-fill if any data exists
+        if (profile.emergency_contact_name) {
+          document.getElementById('emergency-name').value = profile.emergency_contact_name;
+        }
+        if (profile.emergency_contact_phone) {
+          document.getElementById('emergency-phone').value = profile.emergency_contact_phone;
+        }
+        if (profile.medical_notes) {
+          document.getElementById('medical-notes').value = profile.medical_notes;
+        }
+      } catch {
+        // Continue with empty form
+      }
+
+      document.getElementById('profile-loading').style.display = 'none';
+      document.getElementById('complete-form').style.display = '';
+
+      document.getElementById('complete-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        if (!validateStep(1)) {
+          goToStep(1);
+          return;
+        }
+
+        if (!document.getElementById('terms-accepted').checked) {
+          showToast('You must agree to the terms and conditions.', 'error');
+          return;
+        }
+
+        const btn = document.getElementById('complete-btn');
+        setLoading(btn, true);
+
+        try {
+          const { error } = await supabase
+            .from('profiles')
+            .update({
+              emergency_contact_name: document.getElementById('emergency-name').value.trim(),
+              emergency_contact_phone: document.getElementById('emergency-phone').value.trim(),
+              medical_notes: document.getElementById('medical-notes').value.trim(),
+              terms_accepted_at: new Date().toISOString(),
+              onboarding_complete: true
+            })
+            .eq('id', session.user.id);
+
+          if (error) throw error;
+
+          showToast('Profile completed!', 'success');
+          setTimeout(() => { window.location.href = 'dashboard.html'; }, 1000);
+        } catch (err) {
+          showToast(err.message, 'error');
+          setLoading(btn, false);
+        }
+      });
+    });
+  </script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js')
+        .then(reg => console.log('SW registered:', reg.scope))
+        .catch(err => console.warn('SW registration failed:', err));
+    }
+  </script>
+</body>
+</html>
