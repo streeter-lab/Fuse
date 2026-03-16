@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Offline - FUSE Fitness</title>
+  <meta name="theme-color" content="#1B2D44">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f4f5f7;
+      color: #1a1a2e;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      background: #1B2D44;
+      padding: 0.75rem 1rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .logo {
+      color: #fff;
+      font-size: 1.25rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      text-decoration: none;
+    }
+    .logo span { color: #D4894A; }
+    .content {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1rem;
+      text-align: center;
+    }
+    .offline-card {
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      padding: 2.5rem 2rem;
+      max-width: 420px;
+      width: 100%;
+    }
+    .offline-icon {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+    }
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+    p {
+      color: #6b7280;
+      margin-bottom: 1.5rem;
+      line-height: 1.5;
+    }
+    .btn {
+      display: inline-block;
+      padding: 0.6rem 1.25rem;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      cursor: pointer;
+      border: none;
+      background: #D4894A;
+      color: #fff;
+      text-decoration: none;
+    }
+    .btn:hover { background: #C07A3E; }
+  </style>
+</head>
+<body>
+  <header>
+    <a href="index.html" class="logo">FUSE<span>Fitness</span></a>
+  </header>
+  <main class="content">
+    <div class="offline-card">
+      <div class="offline-icon">&#128268;</div>
+      <h1>You're offline</h1>
+      <p>Please check your connection and try again.</p>
+      <button class="btn" onclick="location.reload()">Try Again</button>
+    </div>
+  </main>
+</body>
+</html>
